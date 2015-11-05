@@ -11,6 +11,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.queryparser.classic.QueryParserBase;
+import org.apache.lucene.queryparser.flexible.core.QueryParserHelper;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -58,7 +61,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class ElasticSearchHelper {
 
     /** The Constant _log. */
-    private final static Log _log = LogFactoryUtil.getLog(ElasticSearchHelper.class);
+    private static final Log _log = LogFactoryUtil.getLog(ElasticSearchHelper.class);
 
     /** The _es connector. */
     @Autowired
@@ -71,7 +74,7 @@ public class ElasticSearchHelper {
      * @param query the query
      * @return the search hits
      */
-    public Hits getSearchHits(SearchContext searchContext, Query query) {
+    public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
         if (_log.isInfoEnabled()) {
             _log.info("Search against Elasticsearch with SearchContext");
         }
@@ -81,7 +84,11 @@ public class ElasticSearchHelper {
         Client client = this._esConnector.getClient();
 
         String keywords = searchContext.getKeywords();
-        QueryBuilder queryBuilder = QueryBuilders.queryString(query.toString());
+
+        String queryString = query.toString();
+        queryString = escape(queryString);
+
+        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
         SearchRequestBuilder searchRequestBuilder = client
                 .prepareSearch(
                         ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
@@ -89,7 +96,7 @@ public class ElasticSearchHelper {
 
         // Handle Search Facet queries
         handleFacetQueries(searchContext, searchRequestBuilder);
-        SearchResponse response = null;
+        SearchResponse response;
         if (getSort(searchContext.getSorts()) != null) {
             searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
                     .setSize(searchContext.getEnd())
@@ -105,13 +112,12 @@ public class ElasticSearchHelper {
         hits.setDocs(getDocuments(searchHits, searchContext));
         hits.setScores(getScores(searchHits));
         hits.setSearchTime(
-                (float)(System.currentTimeMillis() - hits.getStart()) /
-                        Time.SECOND);
+                (float) (System.currentTimeMillis() - hits.getStart()) / Time.SECOND);
         hits.setQuery(query);
         if (keywords != null) {
             hits.setQueryTerms(keywords.split(StringPool.SPACE));
         }
-        hits.setLength((int)searchHits.getTotalHits());
+        hits.setLength((int) searchHits.getTotalHits());
         hits.setStart(hits.getStart());
 
         return hits;
@@ -120,27 +126,27 @@ public class ElasticSearchHelper {
     /**
      * Gets the search hits.
      *
-     * @param searchEngineId the search engine id
-     * @param companyId the company id
      * @param query the query
      * @param sort the sort
      * @param start the start
      * @param end the end
      * @return the search hits
      */
-    public Hits getSearchHits(String searchEngineId, long companyId, Query query, Sort[] sort, int start, int end) {
+    public final Hits getSearchHits(final Query query, final Sort[] sort, final int start, final int end) {
         if (_log.isInfoEnabled()) {
-            _log.info("Search against Elasticsearch with searchEngineId, companyId, query, sort, start and end parameters");
+            _log.info("Search against Elasticsearch with query, sort, start and end parameters");
         }
         Hits hits = new HitsImpl();
         Client client = this._esConnector.getClient();
 
-        QueryBuilder queryBuilder = QueryBuilders.queryString(query.toString());
+        String queryString = query.toString();
+        queryString = escape(queryString);
+
+        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
         SearchRequestBuilder searchRequestBuilder = client
-                .prepareSearch(
-                        ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
+                .prepareSearch(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
                 .setQuery(queryBuilder);
-        SearchResponse response = null;
+        SearchResponse response;
         if (getSort(sort) != null) {
             response = searchRequestBuilder.setFrom(start)
                     .setSize(end)
@@ -154,29 +160,27 @@ public class ElasticSearchHelper {
         SearchHits searchHits = response.getHits();
         hits.setDocs(getDocuments(searchHits));
         hits.setScores(getScores(searchHits));
-        hits.setSearchTime(
-                (float)(System.currentTimeMillis() - hits.getStart()) /
-                        Time.SECOND);
+        hits.setSearchTime((float) (System.currentTimeMillis() - hits.getStart()) / Time.SECOND);
         hits.setQuery(query);
-        hits.setLength((int)searchHits.getTotalHits());
+        hits.setLength((int) searchHits.getTotalHits());
         hits.setStart(hits.getStart());
 
         return hits;
     }
 
     /**
-     * get SortBuilder based on sort array sent by Liferay
-     * @param sorts
-     * @return
+     * get SortBuilder based on sort array sent by Liferay.
+     * @param sorts sorts
+     * @return sort builder
      */
-    private SortBuilder getSort(Sort[] sorts) {
+    private SortBuilder getSort(final Sort[] sorts) {
         SortBuilder sortBuilder = null;
         if (sorts != null) {
-            for (int i=0;i<sorts.length;i++) {
-                if (sorts[i] != null && sorts[i].getFieldName() != null) {
-                    sortBuilder = SortBuilders.fieldSort(sorts[i].getFieldName())
+            for (Sort sort : sorts) {
+                if (sort != null && sort.getFieldName() != null) {
+                    sortBuilder = SortBuilders.fieldSort(sort.getFieldName())
                             .ignoreUnmapped(true)
-                            .order((sorts[i].isReverse())? SortOrder.DESC : SortOrder.ASC);
+                            .order((sort.isReverse()) ? SortOrder.DESC : SortOrder.ASC);
                 }
             }
         }
@@ -190,9 +194,9 @@ public class ElasticSearchHelper {
      * @param searchHits the search hits
      * @return the scores
      */
-    private Float[] getScores(SearchHits searchHits) {
+    private Float[] getScores(final SearchHits searchHits) {
         Float[] scores = new Float[searchHits.getHits().length];
-        for (int i=0;i<scores.length;i++) {
+        for (int i = 0; i < scores.length; i++) {
             scores[i] = searchHits.getHits()[i].getScore();
         }
 
@@ -206,7 +210,7 @@ public class ElasticSearchHelper {
      * @param searchHits the search hits
      * @return the documents
      */
-    private Document[] getDocuments(SearchHits searchHits) {
+    private Document[] getDocuments(final SearchHits searchHits) {
         if (_log.isInfoEnabled()) {
             _log.info("Getting document objects from SearchHits");
         }
@@ -227,7 +231,7 @@ public class ElasticSearchHelper {
                     Iterator jsonItr = json.keys();
                     while (jsonItr.hasNext()) {
                         String key = (String) jsonItr.next();
-                        String value = (String) json.getString(key);
+                        String value = json.getString(key);
                         if (_log.isDebugEnabled()) {
                             _log.debug(">>>>>>>>>> " + key + " : " + value);
                         }
@@ -242,7 +246,7 @@ public class ElasticSearchHelper {
             if (_log.isInfoEnabled()) {
                 _log.info("Total size of the search results: " + documentsList.size());
             }
-            return documentsList.toArray(new Document[documentsList.size()-failedJsonCount]);
+            return documentsList.toArray(new Document[documentsList.size() - failedJsonCount]);
         } else {
             if (_log.isInfoEnabled()) {
                 _log.info("No search results found");
@@ -258,23 +262,20 @@ public class ElasticSearchHelper {
      * @param searchContext the search context
      * @return the documents
      */
-    private Document[] getDocuments(SearchHits searchHits, SearchContext searchContext) {
-        if (_log.isInfoEnabled()) {
-            _log.info("Getting document objects from SearchHits");
-        }
+    private Document[] getDocuments(final SearchHits searchHits, final SearchContext searchContext) {
+        _log.info("Getting document objects from SearchHits");
 
         String[] types = searchContext.getEntryClassNames();
-        int total = Integer.parseInt((searchHits != null)? String.valueOf(searchHits.getTotalHits()) : "0");
-        int failedJsonCount = 0;
-        String className = null;
-        if (total > 0) {
-            List<Document> documentsList = new ArrayList<Document>(total);
-            @SuppressWarnings("rawtypes")
-            Iterator itr = searchHits.iterator();
-            while (itr.hasNext()) {
-                Document document = new DocumentImpl();
-                SearchHit hit = (SearchHit) itr.next();
 
+
+        if (searchHits != null && searchHits.getTotalHits() > 0) {
+            int failedJsonCount = 0;
+            String className = null;
+
+            int total = Integer.parseInt(String.valueOf(searchHits.getTotalHits()));
+            List<Document> documentsList = new ArrayList<Document>(total);
+            for (SearchHit hit : searchHits.getHits()) {
+                Document document = new DocumentImpl();
                 JSONObject json;
                 try {
                     json = JSONFactoryUtil.createJSONObject(hit.getSourceAsString());
@@ -282,7 +283,7 @@ public class ElasticSearchHelper {
                     Iterator jsonItr = json.keys();
                     while (jsonItr.hasNext()) {
                         String key = (String) jsonItr.next();
-                        String value = (String) json.getString(key);
+                        String value = json.getString(key);
                         if (_log.isDebugEnabled()) {
                             _log.debug(">>>>>>>>>> " + key + " : " + value);
                         }
@@ -299,14 +300,11 @@ public class ElasticSearchHelper {
                     _log.error("Error while processing the search result json objects", e);
                 }
             }
-            if (_log.isInfoEnabled()) {
-                _log.info("Total size of the search results: " + documentsList.size());
-            }
-            return documentsList.toArray(new Document[documentsList.size()-failedJsonCount]);
+
+            _log.info("Total size of the search results: " + documentsList.size());
+            return documentsList.toArray(new Document[documentsList.size() - failedJsonCount]);
         } else {
-            if (_log.isInfoEnabled()) {
-                _log.info("No search results found");
-            }
+            _log.info("No search results found");
             return new Document[0];
         }
     }
@@ -499,5 +497,20 @@ public class ElasticSearchHelper {
             fromToArray = fromToFormatRange.substring(1, fromToFormatRange.length()-1).split(ElasticSearchIndexerConstants.ELASTIC_SEARCH_TO);
         }
         return fromToArray;
+    }
+
+    public static String escape(final String s) {
+        StringBuilder sb = new StringBuilder();
+
+        for(int i = 0; i < s.length(); ++i) {
+            char c = s.charAt(i);
+            if(c == 47) {
+                sb.append('\\');
+            }
+
+            sb.append(c);
+        }
+
+        return sb.toString();
     }
 }

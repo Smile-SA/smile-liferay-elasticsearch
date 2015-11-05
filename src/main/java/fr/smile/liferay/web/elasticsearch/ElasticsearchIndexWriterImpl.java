@@ -156,7 +156,7 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      * @throws SearchException
      *             the search exception
      */
-    private void processIt(Document document) throws SearchException {
+    private void processIt(final Document document) throws SearchException {
         if (_log.isDebugEnabled()) {
             _log.debug("Processing document for elasticsearch indexing");
         }

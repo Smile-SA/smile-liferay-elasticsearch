@@ -26,10 +26,8 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     private ElasticSearchJsonDocumentBuilder documentJSONBuilder;
 
 
-    /* (non-Javadoc)
-     * @see com.rivetlogic.portal.search.elasticsearch.indexer.ElasticsearchIndexer#processDocuments(java.util.Collection)
-     */
-    public Collection<ElasticSearchJsonDocument> processDocuments(Collection<Document> documents) throws ElasticSearchIndexException {
+    @Override
+    public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents) throws ElasticSearchIndexException {
         LOGGER.info("Processing multiple document objects for elasticsearch indexing");
 
         Collection<ElasticSearchJsonDocument> esDocuments = new ArrayList<ElasticSearchJsonDocument>();
@@ -42,10 +40,8 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
         return esDocuments;
     }
 
-    /* (non-Javadoc)
-     * @see com.rivetlogic.portal.search.elasticsearch.indexer.ElasticsearchIndexer#processDocument(com.liferay.portal.kernel.search.Document)
-     */
-    public ElasticSearchJsonDocument processDocument(Document document) throws ElasticSearchIndexException {
+    @Override
+    public final ElasticSearchJsonDocument processDocument(final Document document) throws ElasticSearchIndexException {
         Collection<Document> documents = new ArrayList<Document>();
         documents.add(document);
         LOGGER.info("Processing Document to update elasticsearch indexes");
