@@ -1,24 +1,30 @@
 package fr.smile.liferay.web.elasticsearch;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.search.*;
-import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchConnector;
-import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexer;
-import fr.smile.liferay.web.elasticsearch.indexer.document.ElasticSearchJsonDocument;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
-import org.elasticsearch.action.deletebyquery.DeleteByQueryResponse;
-import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.NoNodeAvailableException;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.indices.IndexMissingException;
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+
+import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.NoNodeAvailableException;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.search.BaseIndexWriter;
+import com.liferay.portal.kernel.search.Document;
+import com.liferay.portal.kernel.search.DocumentComparator;
+import com.liferay.portal.kernel.search.SearchContext;
+import com.liferay.portal.kernel.search.SearchException;
+
+import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
+import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexer;
+import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexerImpl;
+import fr.smile.liferay.web.elasticsearch.indexer.document.ElasticSearchJsonDocument;
+import fr.smile.liferay.web.elasticsearch.util.ElasticSearchConnector;
+import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
 
 /**
  * @author marem
@@ -158,14 +164,15 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      */
     private void processIt(final Document document) throws SearchException {
         if (_log.isDebugEnabled()) {
-            _log.debug("Processing document for elasticsearch indexing");
+          _log.debug("Processing document for elasticsearch indexing");
         }
-        try {
-            ElasticSearchJsonDocument elasticserachJSONDocument = _indexer.processDocument(document);
-            writeIndex(elasticserachJSONDocument);
-        } catch (ElasticSearchIndexException e) {
-            throw new SearchException(e);
-        }
+		try {
+			ElasticSearchJsonDocument elasticserachJSONDocument = _indexer.processDocument(document);
+			writeIndex(elasticserachJSONDocument);
+		} catch (ElasticSearchIndexException e) {
+			throw new SearchException(e);
+		}
+		
     }
 
     /**
@@ -182,12 +189,11 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
 
             } else {
                 Client client = _esConnector.getClient();
-                IndexResponse response = client
-                        .prepareIndex(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX,
-                                esDocument.getIndexType(), esDocument.getId()).setSource(esDocument.getJsonDocument())
+                IndexResponse response = client.prepareIndex(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX, 
+                		esDocument.getIndexType(), esDocument.getId()).setSource(esDocument.getJsonDocument())
                         .execute().actionGet();
                 if (_log.isDebugEnabled()) {
-                    _log.debug("Document indexed successfully with Id:" + esDocument.getId() + " ,Type:"
+                _log.debug("Document indexed successfully with Id:" + esDocument.getId() + " ,Type:"
                             + esDocument.getIndexType() + " ,Updated index version:" + response.getVersion());
                 }
             }
@@ -209,20 +215,18 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
             /** Don't handle plugin deployment documents, skip them */
             if(!uid.endsWith(ElasticSearchIndexerConstants.WAR)){
                 Client client = _esConnector.getClient();
-                DeleteByQueryResponse response = client
-                        .prepareDeleteByQuery(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
-                        .setQuery(QueryBuilders.queryString(ElasticSearchIndexerConstants.ELASTIC_SEARCH_QUERY_UID + uid))
+                SearchResponse scrollResp = client
+                        .prepareSearch(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
+                        .setQuery(QueryBuilders.queryStringQuery(ElasticSearchIndexerConstants.ELASTIC_SEARCH_QUERY_UID + uid))
                         .execute().actionGet();
 
                 if (_log.isDebugEnabled()) {
-                    _log.debug("Document deleted successfully with Id:" + uid + " , Status:" + response.status());
+                    _log.debug("Document deleted successfully with Id:" + uid + " , Status:" + scrollResp.status());
                 }
             }
         } catch (NoNodeAvailableException noNodeEx) {
             _log.error("No node available:" + noNodeEx.getDetailedMessage());
-        } catch (IndexMissingException indexMissingEx) {
-            _log.error("No index availabe:" + indexMissingEx.getDetailedMessage());
-        }
+        } 
     }
 
     /** The Constant _log. */

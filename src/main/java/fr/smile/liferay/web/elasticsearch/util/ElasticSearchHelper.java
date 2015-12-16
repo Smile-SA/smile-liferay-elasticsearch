@@ -1,6 +1,7 @@
 package fr.smile.liferay.web.elasticsearch.util;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,10 +11,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.queryparser.classic.QueryParserBase;
-import org.apache.lucene.queryparser.flexible.core.QueryParserHelper;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -21,13 +18,18 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.facet.FacetBuilders;
-import org.elasticsearch.search.facet.range.RangeFacetBuilder;
-import org.elasticsearch.search.facet.terms.TermsFacet;
-import org.elasticsearch.search.facet.terms.TermsFacetBuilder;
+import org.elasticsearch.search.aggregations.Aggregation;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.range.Range;
+import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.Terms;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregator;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregatorFactory;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import com.liferay.portal.kernel.json.JSONArray;
 import com.liferay.portal.kernel.json.JSONException;
@@ -52,7 +54,8 @@ import com.liferay.portal.kernel.search.facet.config.FacetConfiguration;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
 
 /**
  * @author marem
@@ -315,15 +318,17 @@ public class ElasticSearchHelper {
      * @param esFacet the es facet
      * @return the map
      */
-    private Map<String, Integer> parseESFacet(org.elasticsearch.search.facet.Facet esFacet) {
-        TermsFacet termsFacet = (TermsFacet) esFacet;
-        Map<String, Integer> esTermFacetResultMap = new HashMap<String, Integer>();
-        for (TermsFacet.Entry entry : termsFacet) {
-            esTermFacetResultMap.put(entry.getTerm().string(), entry.getCount());
-        }
+    private Map<String, Integer> parseESFacet(Aggregation esFacet) {
+    	Terms terms = (Terms) esFacet;
+    	Collection<Terms.Bucket> buckets = terms.getBuckets();
+      Map<String, Integer> esTermFacetResultMap = new HashMap<String, Integer>();
+      for (Terms.Bucket bucket : buckets) {
+          esTermFacetResultMap.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
+      }
 
         return esTermFacetResultMap;
     }
+    
 
     /**
      * This method adds multiple facets to Elastic search query builder.
@@ -341,14 +346,14 @@ public class ElasticSearchHelper {
                 if (facet instanceof MultiValueFacet) {
 
 
-                    TermsFacetBuilder termsFacetBuilder = FacetBuilders.termsFacet(liferayFacetConfiguration.getFieldName());
+                    TermsBuilder termsFacetBuilder = AggregationBuilders.terms(liferayFacetConfiguration.getFieldName());
                     termsFacetBuilder.field(liferayFacetConfiguration.getFieldName());
                     if (liferayFacetDataJSONObject.has(ElasticSearchIndexerConstants.ELASTIC_SEARCH_MAXTERMS)) {
                         termsFacetBuilder.size(liferayFacetDataJSONObject.getInt(ElasticSearchIndexerConstants.ELASTIC_SEARCH_MAXTERMS));
                     }
-                    searchRequestBuilder.addFacet(termsFacetBuilder);
+                    searchRequestBuilder.addAggregation(termsFacetBuilder);
                 } else if (facet instanceof RangeFacet) {
-                    RangeFacetBuilder rangeFacetBuilder = FacetBuilders.rangeFacet(liferayFacetConfiguration.getFieldName());
+                    RangeBuilder rangeFacetBuilder = AggregationBuilders.range(liferayFacetConfiguration.getFieldName());
 
                     /**
                      *A typical ranges array looks like below.
@@ -362,11 +367,11 @@ public class ElasticSearchHelper {
                             JSONObject rangeJSONObject = rangesJSONArray.getJSONObject(i);
                             String[] fromTovalues = fetchFromToValuesInRage(rangeJSONObject);
                             if(fromTovalues != null){
-                                rangeFacetBuilder.addRange(fromTovalues[0].trim(), fromTovalues[1].trim());
+                                rangeFacetBuilder.addRange(Double.parseDouble(fromTovalues[0].trim()), Double.parseDouble(fromTovalues[1].trim()));
                             }
                         }
                     }
-                    searchRequestBuilder.addFacet(rangeFacetBuilder);
+                    searchRequestBuilder.addAggregation(rangeFacetBuilder);
                 }
             }
         }
@@ -383,7 +388,7 @@ public class ElasticSearchHelper {
         for(Entry<String, Facet> facetEntry: searchContext.getFacets().entrySet()) {
             Facet liferayFacet = facetEntry.getValue();
             if(!liferayFacet.isStatic()){
-                org.elasticsearch.search.facet.Facet esFacet = response.getFacets().facet(facetEntry.getKey());
+                Aggregation esFacet = response.getAggregations().get(facetEntry.getKey());
                 if(esFacet != null) {
                     FacetCollector facetCollector = null;
                     Map<String, Integer> facetResults = null;
@@ -418,20 +423,21 @@ public class ElasticSearchHelper {
 
                     } else if ((liferayFacet instanceof MultiValueFacet)) {
                         facetResults = new HashMap<String, Integer>();
-                        TermsFacet esTermsFacetResults = (TermsFacet) esFacet;
-                        for (TermsFacet.Entry entry : esTermsFacetResults) {
-                            facetResults.put(entry.getTerm().string(), entry.getCount());
+                        Terms esTermsFacetResults = (Terms) esFacet;
+                        Collection<Terms.Bucket> buckets = esTermsFacetResults.getBuckets();
+                        for (Terms.Bucket bucket : buckets) {
+                            facetResults.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
                             if(_log.isDebugEnabled()){
-                                _log.debug("MultiValueFacet>>>>>>>>>>>>Term:"+entry.getTerm().string()+" <<<<Count:"+entry.getCount());
+                                _log.debug("MultiValueFacet>>>>>>>>>>>>Term:"+bucket.getKeyAsString()+" <<<<Count:"+bucket.getDocCount());
                             }
                         }
                     } else if ((liferayFacet instanceof RangeFacet)) {
+                    	Range esRange = (Range) esFacet;
                         facetResults = new HashMap<String, Integer>();
-                        org.elasticsearch.search.facet.range.RangeFacet esRangeFacetResults = (org.elasticsearch.search.facet.range.RangeFacet) esFacet;
-                        for(org.elasticsearch.search.facet.range.RangeFacet.Entry entry : esRangeFacetResults){
-                            facetResults.put(buildRangeTerm(entry), new Integer((int) entry.getCount()));
+                        for(Range.Bucket entry : esRange.getBuckets()){
+                            facetResults.put(buildRangeTerm(entry), new Integer((int) entry.getDocCount()));
                             if(_log.isDebugEnabled()){
-                                _log.debug(">>>>>>>From:"+entry.getFromAsString()+">>>>>>>To:"+entry.getToAsString()+">>>>>>>Count:"+entry.getCount());
+                                _log.debug(">>>>>>>From:"+entry.getFromAsString()+">>>>>>>To:"+entry.getToAsString()+">>>>>>>Count:"+entry.getDocCount());
                             }
                         }
                     }
@@ -453,7 +459,7 @@ public class ElasticSearchHelper {
      * @param entry the entry
      * @return the string
      */
-    private String buildRangeTerm(org.elasticsearch.search.facet.range.RangeFacet.Entry entry){
+    private String buildRangeTerm(Range.Bucket entry){
 
         StringBuilder termBuilder = new StringBuilder();
         termBuilder.append(StringPool.OPEN_BRACKET);

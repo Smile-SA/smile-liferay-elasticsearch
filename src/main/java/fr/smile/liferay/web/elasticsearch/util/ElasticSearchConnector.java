@@ -1,23 +1,26 @@
 package fr.smile.liferay.web.elasticsearch.util;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.kernel.util.Validator;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.file.Path;
+
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.env.FailedToResolveConfigException;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
+
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.Validator;
 
 /**
  * @author marem
@@ -33,8 +36,10 @@ public class ElasticSearchConnector {
 
     /**
      * Inits the transport client.
+     * @throws UnknownHostException 
+     * @throws NumberFormatException 
      */
-    public final void connectToServer() {
+    public final void connectToServer() throws NumberFormatException, UnknownHostException {
 
         try {
             String esServerHome = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_HOME_PATH);
@@ -45,7 +50,7 @@ public class ElasticSearchConnector {
             }
 
             /** Create a settings object with custom attributes and build */
-            ImmutableSettings.Builder settingsBuilder = ImmutableSettings.settingsBuilder().classLoader(Settings.class.getClassLoader())
+            Settings.Builder settingsBuilder = Settings.settingsBuilder()
                     .put(ElasticSearchIndexerConstants.ES_SETTING_PATH_HOME, esServerHome)
                     .put(ElasticSearchIndexerConstants.ES_SETTING_CLIENT_SNIFF, true);
 
@@ -68,12 +73,12 @@ public class ElasticSearchConnector {
             /** Prepare a list of Hosts */
             for (int i = 0; i < nodeList.length; i++) {
                 String[] hostnames = nodeList[i].split(StringPool.COLON);
-                InetSocketTransportAddress transportAddress = new InetSocketTransportAddress(hostnames[0],
-                        Integer.parseInt(hostnames[1]));
+                InetSocketTransportAddress transportAddress = new InetSocketTransportAddress(InetAddress.getByName(hostnames[0]),
+                		       Integer.parseInt(hostnames[1]));
                 transportAddresses[i] = transportAddress;
             }
 
-            client = new TransportClient(settingsBuilder.build()).addTransportAddresses(transportAddresses);
+            client = TransportClient.builder().settings(settingsBuilder.build()).build().addTransportAddresses(transportAddresses);
             LOGGER.info("Successfully created Transport client........");
             /**
              * Check if Liferay index already exists, else create one with
@@ -83,7 +88,7 @@ public class ElasticSearchConnector {
             if (!isLiferayIndexExists()) {
                 createLiferayIndexInESServer();
             }
-        } catch (FailedToResolveConfigException configEx) {
+        } catch (ElasticsearchException configEx) {
             LOGGER.error("Error while connecting to Elasticsearch server:" + configEx.getMessage());
         }
     }
@@ -98,6 +103,7 @@ public class ElasticSearchConnector {
             client.close();
         }
         LOGGER.info("Successfully closed Client........");
+        
     }
 
     /**
@@ -154,43 +160,43 @@ public class ElasticSearchConnector {
     private XContentBuilder loadMappings() throws Exception {
         return XContentFactory.jsonBuilder()
                 .startObject()
-                .startArray("dynamic_templates")
-                .startObject()
-                .startObject("modified_template")
-                .field("match", "modified")
-                .startObject("mapping")
-                .field("type", "multi_field")
-                .startObject("fields")
-                .startObject("modified_date")
-                .field("type", "long")
-                .endObject()
-                .startObject("modified")
-                .field("type", "string")
-                .endObject()
-                .endObject()
-                .endObject()
-                .endObject()
-                .endObject()
-                .startObject()
-                .startObject("base")
-                .field("match", "*")
-                .field("unmatch", ElasticSearchIndexerConstants.ENTRY_CLASSNAME)
-                .startObject("mapping")
-                .field("type", "multi_field")
-                .startObject("fields")
-                .startObject("{name}")
-                .field("type", "{dynamic_type}")
-                .endObject()
-                .startObject("ngrams")
-                .field("type", "string")
-                .field("index_analyzer", "nGram_analyzer")
-                .field("search_analyzer", "whitespace_analyzer")
-                .endObject()
-                .endObject()
-                .endObject()
-                .endObject()
-                .endObject()
-                .endArray()
+	                .startArray("dynamic_templates")
+		                .startObject()
+			                .startObject("modified_template")
+			                	.field("match", "modified")
+				                .startObject("mapping")
+				                	.field("type", "multi_field")
+					                .startObject("fields")
+						                .startObject("modified_date")
+						                	.field("type", "long")
+						                .endObject()
+						                .startObject("modified")
+						                	.field("type", "string")
+						                .endObject()
+					                .endObject()
+				                .endObject()
+			                .endObject()
+		                .endObject()
+		                .startObject()
+			                .startObject("base")
+				                .field("match", "*")
+				                .field("unmatch", ElasticSearchIndexerConstants.ENTRY_CLASSNAME)
+				                .startObject("mapping")
+				                	.field("type", "multi_field")
+					                .startObject("fields")
+						                .startObject("{name}")
+						                	.field("type", "{dynamic_type}")
+						                .endObject()
+						                .startObject("ngrams")
+							                .field("type", "string")
+							                .field("index_analyzer", "nGram_analyzer")
+							                .field("search_analyzer", "whitespace_analyzer")
+						                .endObject()
+					                .endObject()
+				                .endObject()
+			                .endObject()
+		                .endObject()
+	                .endArray()
                 .endObject();
     }
 
@@ -202,37 +208,37 @@ public class ElasticSearchConnector {
     private XContentBuilder loadSettings() throws Exception {
         return XContentFactory.jsonBuilder()
                 .startObject()
-                .startObject("analysis")
-                .startObject("filter")
-                .startObject("filternGram")
-                .field("max_gram", 15)
-                .field("min_gram", 2)
-                .field("type", "edgeNGram")
-                .field("term_vector", "with_positions_offsets")
-                .field("version", "4.1")    // version information is provided to make the highlighting work properly
-                .humanReadable(true)
-                .endObject()
-                .endObject()
-                .startObject("analyzer")
-                .startObject("nGram_analyzer")
-                .field("type", "custom")
-                .field("tokenizer", "letter")
-                .startArray("filter")
-                .value("stop")
-                .value("lowercase")
-                .value("filternGram")
-                .endArray()
-                .endObject()
-                .startObject("whitespace_analyzer")
-                .field("type", "custom")
-                .field("tokenizer", "letter")
-                .startArray("filter")
-                .value("lowercase")
-                .value("stop")
-                .endArray()
-                .endObject()
-                .endObject()
-                .endObject()
+	                .startObject("analysis")
+		                .startObject("filter")
+			                .startObject("filternGram")
+				                .field("max_gram", 15)
+				                .field("min_gram", 2)
+				                .field("type", "edgeNGram")
+				                .field("term_vector", "with_positions_offsets")
+				                .field("version", "4.1")    // version information is provided to make the highlighting work properly
+				                .humanReadable(true)
+			                .endObject()
+		                .endObject()
+		                .startObject("analyzer")
+			                .startObject("nGram_analyzer")
+				                .field("type", "custom")
+				                .field("tokenizer", "letter")
+				                .startArray("filter")
+					                .value("stop")
+					                .value("lowercase")
+					                .value("filternGram")
+				                .endArray()
+			                .endObject()
+			                .startObject("whitespace_analyzer")
+				                .field("type", "custom")
+				                .field("tokenizer", "letter")
+				                .startArray("filter")
+					                .value("lowercase")
+					                .value("stop")
+				                .endArray()
+			                .endObject()
+		                .endObject()
+	                .endObject()
                 .endObject();
     }
 }

@@ -28,7 +28,7 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     @Override
     public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents) throws ElasticSearchIndexException {
-        LOGGER.info("Processing multiple document objects for elasticsearch indexing");
+    	LOGGER.info("Processing multiple document objects for elasticsearch indexing");
 
         Collection<ElasticSearchJsonDocument> esDocuments = new ArrayList<ElasticSearchJsonDocument>();
         // transform Document object into JSON object and send it to
