@@ -39,15 +39,9 @@ public class ElasticSearchJsonDocumentBuilder {
             for (String excludedType : excludedTypesArray) {
                 excludedTypes.add(excludedType);
             }
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Loaded Excluded index types are:" + cslExcludedType);
-            }
-            LOGGER.info("Loaded Excluded index types are:" + cslExcludedType);
+            LOGGER.debug("Loaded Excluded index types are:" + cslExcludedType);
         } else {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Excluded index types are not defined");
-            }
-            LOGGER.info("Excluded index types are not defined");
+            LOGGER.debug("Excluded index types are not defined");
         }
     }
 
@@ -130,9 +124,7 @@ public class ElasticSearchJsonDocumentBuilder {
             contentBuilder.endObject();
 
             elasticserachJSONDocument.setJsonDocument(contentBuilder.string());
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Liferay Document converted to ESJSON document successfully:" + contentBuilder.string());
-            }
+            LOGGER.debug("Liferay Document converted to ESJSON document successfully:" + contentBuilder.string());
         } catch (IOException e) {
             LOGGER.error("IO Error during converstion of Liferay Document to JSON format" + e.getMessage());
         }

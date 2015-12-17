@@ -30,26 +30,22 @@ public class ElasticSearchJsonDocument {
          *
          * @param value the value
          */
-        private DocumentError(String value) {
+        private DocumentError(final String value) {
             this.errorMsg = value;
         }
 
-        /* (non-Javadoc)
-         * @see java.lang.Enum#toString()
-         */
-        public String toString(){
+        @Override
+        public String toString() {
             return errorMsg;
-
         }
-    };
-
+    }
 
     /**
      * Gets the id.
      *
      * @return the id
      */
-    public String getId() {
+    public final String getId() {
         return id;
     }
 
@@ -58,7 +54,7 @@ public class ElasticSearchJsonDocument {
      *
      * @param id the new id
      */
-    public void setId(String id) {
+    public final void setId(final String id) {
         this.id = id;
     }
 
@@ -67,7 +63,7 @@ public class ElasticSearchJsonDocument {
      *
      * @return the index type
      */
-    public String getIndexType() {
+    public final String getIndexType() {
         return indexType;
     }
 
@@ -76,7 +72,7 @@ public class ElasticSearchJsonDocument {
      *
      * @param indexType the new index type
      */
-    public void setIndexType(String indexType) {
+    public final void setIndexType(final String indexType) {
         this.indexType = indexType;
     }
 
@@ -85,7 +81,7 @@ public class ElasticSearchJsonDocument {
      *
      * @return the json document
      */
-    public String getJsonDocument() {
+    public final String getJsonDocument() {
         return jsonDocument;
     }
 
@@ -94,7 +90,7 @@ public class ElasticSearchJsonDocument {
      *
      * @param jsonDocument the new json document
      */
-    public void setJsonDocument(String jsonDocument) {
+    public final void setJsonDocument(final String jsonDocument) {
         this.jsonDocument = jsonDocument;
     }
 
@@ -103,7 +99,7 @@ public class ElasticSearchJsonDocument {
      *
      * @return the error message
      */
-    public String getErrorMessage() {
+    public final String getErrorMessage() {
         return errorMessage;
     }
 
@@ -112,7 +108,7 @@ public class ElasticSearchJsonDocument {
      *
      * @param errorMessage the new error message
      */
-    public void setErrorMessage(String errorMessage) {
+    public final void setErrorMessage(final String errorMessage) {
         this.errorMessage = errorMessage;
     }
 
@@ -121,7 +117,7 @@ public class ElasticSearchJsonDocument {
      *
      * @return true, if is error
      */
-    public boolean isError() {
+    public final boolean isError() {
         return isError;
     }
 
@@ -130,7 +126,7 @@ public class ElasticSearchJsonDocument {
      *
      * @param isError the new error
      */
-    public void setError(boolean isError) {
+    public final void setError(final boolean isError) {
         this.isError = isError;
     }
 

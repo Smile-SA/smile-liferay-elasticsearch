@@ -19,7 +19,7 @@ import java.util.List;
 public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     /** The Constant LOGGER. */
-    private final static Log LOGGER = LogFactoryUtil.getLog(ElasticSearchIndexerImpl.class);
+    private static final Log LOGGER = LogFactoryUtil.getLog(ElasticSearchIndexerImpl.class);
 
     /** The document json builder. */
     @Autowired
@@ -27,7 +27,8 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
 
     @Override
-    public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents) throws ElasticSearchIndexException {
+    public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents)
+            throws ElasticSearchIndexException {
     	LOGGER.info("Processing multiple document objects for elasticsearch indexing");
 
         Collection<ElasticSearchJsonDocument> esDocuments = new ArrayList<ElasticSearchJsonDocument>();
@@ -41,7 +42,8 @@ public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
     }
 
     @Override
-    public final ElasticSearchJsonDocument processDocument(final Document document) throws ElasticSearchIndexException {
+    public final ElasticSearchJsonDocument processDocument(final Document document)
+            throws ElasticSearchIndexException {
         Collection<Document> documents = new ArrayList<Document>();
         documents.add(document);
         LOGGER.info("Processing Document to update elasticsearch indexes");

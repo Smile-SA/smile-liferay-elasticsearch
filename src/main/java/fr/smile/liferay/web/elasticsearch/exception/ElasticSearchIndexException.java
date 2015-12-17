@@ -17,7 +17,7 @@ public class ElasticSearchIndexException extends Exception {
      *
      * @param msg the msg
      */
-    public ElasticSearchIndexException(String msg) {
+    public ElasticSearchIndexException(final String msg) {
         super(msg);
     }
 
@@ -26,7 +26,7 @@ public class ElasticSearchIndexException extends Exception {
      *
      * @param t the t
      */
-    public ElasticSearchIndexException(Throwable t) {
+    public ElasticSearchIndexException(final Throwable t) {
         super(t);
     }
 
@@ -36,7 +36,7 @@ public class ElasticSearchIndexException extends Exception {
      * @param msg the msg
      * @param t the t
      */
-    public ElasticSearchIndexException(String msg, Throwable t) {
+    public ElasticSearchIndexException(final String msg, final Throwable t) {
         super(msg, t);
     }
 

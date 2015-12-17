@@ -13,24 +13,18 @@ public class ElasticSearchDefaultTermCollector implements TermCollector {
      * @param term the term
      * @param frequency the frequency
      */
-    public ElasticSearchDefaultTermCollector(String term, int frequency) {
+    public ElasticSearchDefaultTermCollector(final String term, final int frequency) {
         this.term = term;
         this.frequency = frequency;
     }
 
-    /* (non-Javadoc)
-     * @see com.liferay.portal.kernel.search.facet.collector.TermCollector#getTerm()
-     */
     @Override
-    public String getTerm() {
+    public final String getTerm() {
         return this.term;
     }
 
-    /* (non-Javadoc)
-     * @see com.liferay.portal.kernel.search.facet.collector.TermCollector#getFrequency()
-     */
     @Override
-    public int getFrequency() {
+    public final int getFrequency() {
         return this.frequency;
     }
 

@@ -2,7 +2,6 @@ package fr.smile.liferay.web.elasticsearch.util;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.file.Path;
 
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -36,8 +35,8 @@ public class ElasticSearchConnector {
 
     /**
      * Inits the transport client.
-     * @throws UnknownHostException 
-     * @throws NumberFormatException 
+     * @throws UnknownHostException unknown host exception
+     * @throws NumberFormatException number format exception
      */
     public final void connectToServer() throws NumberFormatException, UnknownHostException {
 
@@ -54,7 +53,8 @@ public class ElasticSearchConnector {
                     .put(ElasticSearchIndexerConstants.ES_SETTING_PATH_HOME, esServerHome)
                     .put(ElasticSearchIndexerConstants.ES_SETTING_CLIENT_SNIFF, true);
 
-            if (Validator.isNotNull(esClusterName) && !esClusterName.isEmpty() && !ElasticSearchIndexerConstants.ELASTIC_SEARCH.equalsIgnoreCase(esClusterName)) {
+            if (Validator.isNotNull(esClusterName) && !esClusterName.isEmpty()
+                    && !ElasticSearchIndexerConstants.ELASTIC_SEARCH.equalsIgnoreCase(esClusterName)) {
                 settingsBuilder.put(ElasticSearchIndexerConstants.ES_SETTING_CLUSTERNAME, esClusterName);
 
                 if (LOGGER.isDebugEnabled()) {
@@ -73,12 +73,15 @@ public class ElasticSearchConnector {
             /** Prepare a list of Hosts */
             for (int i = 0; i < nodeList.length; i++) {
                 String[] hostnames = nodeList[i].split(StringPool.COLON);
-                InetSocketTransportAddress transportAddress = new InetSocketTransportAddress(InetAddress.getByName(hostnames[0]),
-                		       Integer.parseInt(hostnames[1]));
+                InetSocketTransportAddress transportAddress = new InetSocketTransportAddress(
+                    InetAddress.getByName(hostnames[0]),
+                    Integer.parseInt(hostnames[1])
+                );
                 transportAddresses[i] = transportAddress;
             }
-
-            client = TransportClient.builder().settings(settingsBuilder.build()).build().addTransportAddresses(transportAddresses);
+            client = TransportClient.builder().settings(
+                    settingsBuilder.build()
+            ).build().addTransportAddresses(transportAddresses);
             LOGGER.info("Successfully created Transport client........");
             /**
              * Check if Liferay index already exists, else create one with
@@ -103,7 +106,6 @@ public class ElasticSearchConnector {
             client.close();
         }
         LOGGER.info("Successfully closed Client........");
-        
     }
 
     /**
@@ -153,7 +155,7 @@ public class ElasticSearchConnector {
     }
 
     /**
-     * builds mappings for suggestions feature and fields aliasing
+     * builds mappings for suggestions feature and fields aliasing.
      * @return mapping builder
      * @throws Exception exception
      */
@@ -215,7 +217,7 @@ public class ElasticSearchConnector {
 				                .field("min_gram", 2)
 				                .field("type", "edgeNGram")
 				                .field("term_vector", "with_positions_offsets")
-				                .field("version", "4.1")    // version information is provided to make the highlighting work properly
+				                .field("version", "4.1")
 				                .humanReadable(true)
 			                .endObject()
 		                .endObject()

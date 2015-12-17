@@ -9,6 +9,7 @@ import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.liferay.portal.kernel.log.Log;
@@ -21,52 +22,36 @@ import com.liferay.portal.kernel.search.SearchException;
 
 import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
 import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexer;
-import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexerImpl;
 import fr.smile.liferay.web.elasticsearch.indexer.document.ElasticSearchJsonDocument;
 import fr.smile.liferay.web.elasticsearch.util.ElasticSearchConnector;
 import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
+import org.springframework.stereotype.Service;
 
 /**
  * @author marem
  * @since 29/10/15.
  */
+@Service
 public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
 
-    /** The _indexer. */
+    /** The indexer. */
     @Autowired
-    private ElasticSearchIndexer _indexer;
+    private ElasticSearchIndexer indexer;
 
     /** The _es connector. */
     @Autowired
-    private ElasticSearchConnector _esConnector;
+    private ElasticSearchConnector esConnector;
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#addDocument(com.liferay.
-     * portal.kernel.search.SearchContext,
-     * com.liferay.portal.kernel.search.Document)
-     */
     @Override
-    public void addDocument(SearchContext searchContext, Document document) throws SearchException {
-        if (_log.isDebugEnabled()) {
-            _log.debug("Add document for elasticsearch indexing");
-        }
+    public final void addDocument(final SearchContext searchContext, final Document document) throws SearchException {
+        LOGGER.debug("Add document for elasticsearch indexing");
         processIt(document);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#addDocuments(com.liferay
-     * .portal.kernel.search.SearchContext, java.util.Collection)
-     */
-    public void addDocuments(SearchContext searchContext, Collection<Document> documents) throws SearchException {
-        if (_log.isDebugEnabled()) {
-            _log.debug("Add documents for elasticsearch indexing");
-        }
+    @Override
+    public final void addDocuments(final SearchContext searchContext, final Collection<Document> documents)
+            throws SearchException {
+        LOGGER.debug("Add documents for elasticsearch indexing");
         /** This is to sort the Documents with version field from oldest to latest updates to
          retain the modifications */
         DocumentComparator documentComparator = new DocumentComparator(true, false);
@@ -78,70 +63,37 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#deleteDocument(com.liferay
-     * .portal.kernel.search.SearchContext, java.lang.String)
-     */
-    public void deleteDocument(SearchContext searchContext, String uid) throws SearchException {
-        if (_log.isDebugEnabled()) {
-            _log.debug("Delete document from elasticsearch indexices");
-        }
+    @Override
+    public final void deleteDocument(final SearchContext searchContext, final String uid) throws SearchException {
+        LOGGER.debug("Delete document from elasticsearch indexices");
         deleteIndexByQuery(uid);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#deleteDocuments(com.liferay
-     * .portal.kernel.search.SearchContext, java.util.Collection)
-     */
-    public void deleteDocuments(SearchContext searchContext, Collection<String> uids) throws SearchException {
+    @Override
+    public final void deleteDocuments(final SearchContext searchContext, final Collection<String> uids)
+            throws SearchException {
         for (String uid : uids) {
             deleteDocument(searchContext, uid);
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#deletePortletDocuments(com
-     * .liferay.portal.kernel.search.SearchContext, java.lang.String)
-     */
-    public void deletePortletDocuments(SearchContext searchContext, String portletId) throws SearchException {
-        if (_log.isDebugEnabled()) {
-            _log.debug("Delete portlet documents from elasticsearch indexing");
-        }
+    @Override
+    public final void deletePortletDocuments(final SearchContext searchContext, final String portletId)
+            throws SearchException {
+        LOGGER.debug("Delete portlet documents from elasticsearch indexing");
         throw new SearchException("Portlet deployment documents are not supported");
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#updateDocument(com.liferay
-     * .portal.kernel.search.SearchContext,
-     * com.liferay.portal.kernel.search.Document)
-     */
-    public void updateDocument(SearchContext searchContext, Document document) throws SearchException {
-        if (_log.isDebugEnabled()) {
-            _log.debug("Update document from elasticsearch indexing");
-        }
+    @Override
+    public final void updateDocument(final SearchContext searchContext, final Document document)
+            throws SearchException {
+        LOGGER.debug("Update document from elasticsearch indexing");
         processIt(document);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.liferay.portal.kernel.search.IndexWriter#updateDocuments(com.liferay
-     * .portal.kernel.search.SearchContext, java.util.Collection)
-     */
-    public void updateDocuments(SearchContext searchContext, Collection<Document> documents) throws SearchException {
+    @Override
+    public final void updateDocuments(final SearchContext searchContext, final Collection<Document> documents)
+            throws SearchException {
 
         /** This is to sort the Documents with version field from oldest to latest updates to
          retain the modifications */
@@ -163,16 +115,13 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      *             the search exception
      */
     private void processIt(final Document document) throws SearchException {
-        if (_log.isDebugEnabled()) {
-          _log.debug("Processing document for elasticsearch indexing");
+        LOGGER.debug("Processing document for elasticsearch indexing");
+        try {
+            ElasticSearchJsonDocument elasticserachJSONDocument = indexer.processDocument(document);
+            writeIndex(elasticserachJSONDocument);
+        } catch (ElasticSearchIndexException e) {
+            throw new SearchException(e);
         }
-		try {
-			ElasticSearchJsonDocument elasticserachJSONDocument = _indexer.processDocument(document);
-			writeIndex(elasticserachJSONDocument);
-		} catch (ElasticSearchIndexException e) {
-			throw new SearchException(e);
-		}
-		
     }
 
     /**
@@ -181,24 +130,25 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      * @param esDocument
      *            the json document
      */
-    private void writeIndex(ElasticSearchJsonDocument esDocument) {
+    private void writeIndex(final ElasticSearchJsonDocument esDocument) {
 
         try {
             if (esDocument.isError()) {
-                _log.warn("Coudln't store document in index. Error..." + esDocument.getErrorMessage());
-
+                LOGGER.warn("Coudln't store document in index. Error..." + esDocument.getErrorMessage());
             } else {
-                Client client = _esConnector.getClient();
-                IndexResponse response = client.prepareIndex(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX, 
-                		esDocument.getIndexType(), esDocument.getId()).setSource(esDocument.getJsonDocument())
-                        .execute().actionGet();
-                if (_log.isDebugEnabled()) {
-                _log.debug("Document indexed successfully with Id:" + esDocument.getId() + " ,Type:"
-                            + esDocument.getIndexType() + " ,Updated index version:" + response.getVersion());
-                }
+                Client client = esConnector.getClient();
+                IndexResponse response = client.prepareIndex(
+                        ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX,
+                		esDocument.getIndexType(),
+                        esDocument.getId()
+                ).setSource(esDocument.getJsonDocument()).execute().actionGet();
+
+                LOGGER.debug("Document indexed successfully with Id: " + esDocument.getId()
+                        + " ,Type:" + esDocument.getIndexType()
+                        + " ,Updated index version:" + response.getVersion());
             }
         } catch (NoNodeAvailableException noNodeEx) {
-            _log.error("No node available:" + noNodeEx.getDetailedMessage());
+            LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
         }
     }
 
@@ -209,27 +159,29 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      * @param uid
      *            the uid
      */
-    private void deleteIndexByQuery(String uid) {
+    private void deleteIndexByQuery(final String uid) {
 
         try {
             /** Don't handle plugin deployment documents, skip them */
-            if(!uid.endsWith(ElasticSearchIndexerConstants.WAR)){
-                Client client = _esConnector.getClient();
+            if (!uid.endsWith(ElasticSearchIndexerConstants.WAR)) {
+                Client client = esConnector.getClient();
+                QueryStringQueryBuilder query = QueryBuilders.queryStringQuery(
+                        ElasticSearchIndexerConstants.ELASTIC_SEARCH_QUERY_UID + uid
+                );
+
                 SearchResponse scrollResp = client
                         .prepareSearch(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
-                        .setQuery(QueryBuilders.queryStringQuery(ElasticSearchIndexerConstants.ELASTIC_SEARCH_QUERY_UID + uid))
+                        .setQuery(query)
                         .execute().actionGet();
 
-                if (_log.isDebugEnabled()) {
-                    _log.debug("Document deleted successfully with Id:" + uid + " , Status:" + scrollResp.status());
-                }
+                LOGGER.debug("Document deleted successfully with Id:" + uid + " , Status:" + scrollResp.status());
             }
         } catch (NoNodeAvailableException noNodeEx) {
-            _log.error("No node available:" + noNodeEx.getDetailedMessage());
-        } 
+            LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
+        }
     }
 
-    /** The Constant _log. */
-    private final static Log _log = LogFactoryUtil.getLog(ElasticsearchIndexWriterImpl.class);
+    /** The Constant LOGGER. */
+    private static final Log LOGGER = LogFactoryUtil.getLog(ElasticsearchIndexWriterImpl.class);
 
 }

@@ -19,7 +19,7 @@ public interface ElasticSearchIndexer {
      * @return the elasticserach json document
      * @throws ElasticSearchIndexException the elasticsearch indexing exception
      */
-    public ElasticSearchJsonDocument processDocument(Document document) throws ElasticSearchIndexException;
+    ElasticSearchJsonDocument processDocument(Document document) throws ElasticSearchIndexException;
 
     /**
      * Process documents.
@@ -28,5 +28,6 @@ public interface ElasticSearchIndexer {
      * @return the collection
      * @throws ElasticSearchIndexException the elasticsearch indexing exception
      */
-    public Collection<ElasticSearchJsonDocument> processDocuments(Collection<Document> documents) throws ElasticSearchIndexException;
+    Collection<ElasticSearchJsonDocument> processDocuments(Collection<Document> documents)
+            throws ElasticSearchIndexException;
 }
