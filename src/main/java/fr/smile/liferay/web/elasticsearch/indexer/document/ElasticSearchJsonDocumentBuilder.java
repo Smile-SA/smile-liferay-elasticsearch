@@ -10,7 +10,10 @@ import com.liferay.util.portlet.PortletProps;
 import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -20,10 +23,14 @@ import java.util.Set;
  * @author marem
  * @since 30/10/15.
  */
+@Service
 public class ElasticSearchJsonDocumentBuilder {
 
     /** The Constant LOGGER. */
     private static final Log LOGGER = LogFactoryUtil.getLog(ElasticSearchJsonDocumentBuilder.class);
+
+    @Value("${indexExcludedType}")
+    private String excludedTypesProperty;
 
     /** The excluded types. */
     private Set<String> excludedTypes;
@@ -31,15 +38,15 @@ public class ElasticSearchJsonDocumentBuilder {
     /**
      * Init method.
      */
+    @PostConstruct
     public final void loadExcludedTypes() {
-        String cslExcludedType = PortletProps.get(ElasticSearchIndexerConstants.ES_KEY_EXCLUDED_INDEXTYPE);
-        if (Validator.isNotNull(cslExcludedType)) {
+        if (Validator.isNotNull(excludedTypesProperty)) {
             excludedTypes = new HashSet<String>();
-            String[] excludedTypesArray = cslExcludedType.split(StringPool.COMMA);
+            String[] excludedTypesArray = excludedTypesProperty.split(StringPool.COMMA);
             for (String excludedType : excludedTypesArray) {
                 excludedTypes.add(excludedType);
             }
-            LOGGER.debug("Loaded Excluded index types are:" + cslExcludedType);
+            LOGGER.debug("Loaded Excluded index types are:" + excludedTypesProperty);
         } else {
             LOGGER.debug("Excluded index types are not defined");
         }
@@ -60,7 +67,7 @@ public class ElasticSearchJsonDocumentBuilder {
         try {
             XContentBuilder contentBuilder = XContentFactory.jsonBuilder().startObject();
 
-            Field classnameField = document.getField(ElasticSearchIndexerConstants.ENTRY_CLASSNAME);
+            Field classnameField = fields.get(ElasticSearchIndexerConstants.ENTRY_CLASSNAME);
             String entryClassName = "";
             if (classnameField != null) {
                 entryClassName = classnameField.getValue();
@@ -98,7 +105,7 @@ public class ElasticSearchJsonDocumentBuilder {
              * the primary Id will be Indextype + Entry class PK. The primary Id is to maintain uniqueness
              * in ES server database and nothing to do with UID or is not used for any other purpose.
              */
-            Field classPKField = document.getField(ElasticSearchIndexerConstants.ENTRY_CLASSPK);
+            Field classPKField = fields.get(ElasticSearchIndexerConstants.ENTRY_CLASSPK);
             String entryClassPK = "";
             if (classPKField != null) {
                 entryClassPK = classPKField.getValue();
@@ -139,7 +146,7 @@ public class ElasticSearchJsonDocumentBuilder {
      * @return true, if is document hidden
      */
     private boolean isDocumentHidden(final Document document) {
-        Field hiddenField = document.getField(ElasticSearchIndexerConstants.HIDDEN);
+        Field hiddenField = document.getFields().get(ElasticSearchIndexerConstants.HIDDEN);
         boolean hiddenFlag = false;
         if (hiddenField != null) {
             hiddenFlag = Boolean.getBoolean(hiddenField.getValue());

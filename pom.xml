@@ -3,7 +3,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>fr.smile.liferay.web.elasticsearch</groupId>
-	<artifactId>smile-liferay-elasticsearch</artifactId>
+	<artifactId>smile-liferay-elasticsearch-web</artifactId>
 	<packaging>war</packaging>
 	<name>smile-liferay-elasticsearch Web</name>
 	<version>1.0-SNAPSHOT</version>
@@ -11,12 +11,14 @@
     <properties>
         <java-version>1.7</java-version>
         <spring.version>4.1.7.RELEASE</spring.version>
-        <liferay.version>6.2.3</liferay.version>
-        <liferay.maven.plugin.version>6.2.2</liferay.maven.plugin.version>
+        <liferay.version>6.1.30.4</liferay.version>
+        <liferay.maven.plugin.version>6.1.30.1</liferay.maven.plugin.version>
+        <compiler-plugin.version>2.3.2</compiler-plugin.version>
+        <resources-plugin.version>2.5</resources-plugin.version>
     </properties>
 
 	<build>
-        <finalName>${project.artifactId}</finalName>
+        <finalName>smile-liferay-elasticsearch-web</finalName>
 		<plugins>
 			<plugin>
 				<groupId>com.liferay.maven.plugins</groupId>
@@ -33,6 +35,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
+                <version>${compiler-plugin.version}</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 					<source>1.6</source>
@@ -41,6 +44,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-resources-plugin</artifactId>
+                <version>${resources-plugin.version}</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
 				</configuration>
@@ -97,4 +101,15 @@
         </dependency>
 
 	</dependencies>
+
+    <repositories>
+        <repository>
+            <id>nexus.internal.third-party</id>
+            <url>http://pic-java.vitry.intranet/nexus/content/repositories/nonCentralArtifacts/</url>
+        </repository>
+        <repository>
+            <id>nexus.internal.liferay-smile</id>
+            <url>http://pic-java.vitry.intranet/nexus/content/repositories/LiferaySmile/</url>
+        </repository>
+    </repositories>
 </project>

@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import com.liferay.portal.kernel.search.*;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -14,11 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.search.BaseIndexWriter;
-import com.liferay.portal.kernel.search.Document;
-import com.liferay.portal.kernel.search.DocumentComparator;
-import com.liferay.portal.kernel.search.SearchContext;
-import com.liferay.portal.kernel.search.SearchException;
 
 import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
 import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexer;
@@ -32,7 +28,7 @@ import org.springframework.stereotype.Service;
  * @since 29/10/15.
  */
 @Service
-public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
+public class ElasticsearchIndexWriterImpl implements IndexWriter {
 
     /** The indexer. */
     @Autowired

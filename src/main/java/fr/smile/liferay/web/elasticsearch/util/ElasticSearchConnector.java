@@ -20,11 +20,16 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 
 /**
  * @author marem
  * @since 29/10/15.
  */
+@Service
 public class ElasticSearchConnector {
 
     /** The Constant LOGGER. */
@@ -38,9 +43,11 @@ public class ElasticSearchConnector {
      * @throws UnknownHostException unknown host exception
      * @throws NumberFormatException number format exception
      */
+    @PostConstruct
     public final void connectToServer() throws NumberFormatException, UnknownHostException {
 
         try {
+            LOGGER.error("init es connexion");
             String esServerHome = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_HOME_PATH);
             String esClusterName = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_CLUSTERNAME);
 
@@ -57,9 +64,7 @@ public class ElasticSearchConnector {
                     && !ElasticSearchIndexerConstants.ELASTIC_SEARCH.equalsIgnoreCase(esClusterName)) {
                 settingsBuilder.put(ElasticSearchIndexerConstants.ES_SETTING_CLUSTERNAME, esClusterName);
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Elasticsearch cluster name is not configured to default:" + esClusterName);
-                }
+                LOGGER.debug("Elasticsearch cluster name is not configured to default:" + esClusterName);
             }
 
             String csElasticsearchNodes = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_NODE);
@@ -100,6 +105,7 @@ public class ElasticSearchConnector {
      * The Close is run during destroying the spring context. The client object
      * need to be closed to avoid overlock exceptions
      */
+    @PreDestroy
     public final void close() {
         LOGGER.info("About to close Client........");
         if (client != null) {

@@ -7,6 +7,7 @@ import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
 import fr.smile.liferay.web.elasticsearch.indexer.document.ElasticSearchJsonDocument;
 import fr.smile.liferay.web.elasticsearch.indexer.document.ElasticSearchJsonDocumentBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -16,6 +17,7 @@ import java.util.List;
  * @author marem
  * @since 30/10/15.
  */
+@Service
 public class ElasticSearchIndexerImpl implements ElasticSearchIndexer {
 
     /** The Constant LOGGER. */
