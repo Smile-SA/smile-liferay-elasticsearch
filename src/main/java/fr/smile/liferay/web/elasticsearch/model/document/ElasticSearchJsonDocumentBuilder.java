@@ -1,4 +1,4 @@
-package fr.smile.liferay.web.elasticsearch.indexer.document;
+package fr.smile.liferay.web.elasticsearch.model.document;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -6,8 +6,6 @@ import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
-import com.liferay.util.portlet.PortletProps;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +32,10 @@ public class ElasticSearchJsonDocumentBuilder {
 
     /** The excluded types. */
     private Set<String> excludedTypes;
+
+    public static final String ENTRY_CLASSNAME = "entryClassName";
+    public static final String ENTRY_CLASSPK = "entryClassPK";
+    public static final String HIDDEN = "hidden";
 
     /**
      * Init method.
@@ -67,7 +69,7 @@ public class ElasticSearchJsonDocumentBuilder {
         try {
             XContentBuilder contentBuilder = XContentFactory.jsonBuilder().startObject();
 
-            Field classnameField = fields.get(ElasticSearchIndexerConstants.ENTRY_CLASSNAME);
+            Field classnameField = fields.get(ENTRY_CLASSNAME);
             String entryClassName = "";
             if (classnameField != null) {
                 entryClassName = classnameField.getValue();
@@ -105,7 +107,7 @@ public class ElasticSearchJsonDocumentBuilder {
              * the primary Id will be Indextype + Entry class PK. The primary Id is to maintain uniqueness
              * in ES server database and nothing to do with UID or is not used for any other purpose.
              */
-            Field classPKField = fields.get(ElasticSearchIndexerConstants.ENTRY_CLASSPK);
+            Field classPKField = fields.get(ENTRY_CLASSPK);
             String entryClassPK = "";
             if (classPKField != null) {
                 entryClassPK = classPKField.getValue();
@@ -146,7 +148,7 @@ public class ElasticSearchJsonDocumentBuilder {
      * @return true, if is document hidden
      */
     private boolean isDocumentHidden(final Document document) {
-        Field hiddenField = document.getFields().get(ElasticSearchIndexerConstants.HIDDEN);
+        Field hiddenField = document.getFields().get(HIDDEN);
         boolean hiddenFlag = false;
         if (hiddenField != null) {
             hiddenFlag = Boolean.getBoolean(hiddenField.getValue());

@@ -1,15 +1,24 @@
-package fr.smile.liferay.web.elasticsearch.util;
+package fr.smile.liferay.web.elasticsearch.api;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
+import com.liferay.portal.kernel.json.JSONArray;
+import com.liferay.portal.kernel.json.JSONException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
+import com.liferay.portal.kernel.json.JSONObject;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.search.*;
+import com.liferay.portal.kernel.search.facet.AssetEntriesFacet;
+import com.liferay.portal.kernel.search.facet.Facet;
+import com.liferay.portal.kernel.search.facet.MultiValueFacet;
+import com.liferay.portal.kernel.search.facet.RangeFacet;
+import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
+import com.liferay.portal.kernel.search.facet.config.FacetConfiguration;
+import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.Time;
+import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
+import fr.smile.liferay.web.elasticsearch.model.index.LiferayIndex;
+import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -27,84 +36,33 @@ import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.liferay.portal.kernel.json.JSONArray;
-import com.liferay.portal.kernel.json.JSONException;
-import com.liferay.portal.kernel.json.JSONFactoryUtil;
-import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.search.Document;
-import com.liferay.portal.kernel.search.DocumentImpl;
-import com.liferay.portal.kernel.search.Field;
-import com.liferay.portal.kernel.search.Hits;
-import com.liferay.portal.kernel.search.HitsImpl;
-import com.liferay.portal.kernel.search.Query;
-import com.liferay.portal.kernel.search.SearchContext;
-import com.liferay.portal.kernel.search.Sort;
-import com.liferay.portal.kernel.search.facet.AssetEntriesFacet;
-import com.liferay.portal.kernel.search.facet.Facet;
-import com.liferay.portal.kernel.search.facet.MultiValueFacet;
-import com.liferay.portal.kernel.search.facet.RangeFacet;
-import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
-import com.liferay.portal.kernel.search.facet.config.FacetConfiguration;
-import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.kernel.util.Time;
-
-import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
 import org.springframework.stereotype.Service;
+
+import java.util.*;
 
 /**
  * @author marem
- * @since 29/10/15.
+ * @since 30/12/15.
  */
 @Service
-public class ElasticSearchHelper {
+public class EsSearchApiService {
 
     /** The Constant LOGGER. */
-    private static final Log LOGGER = LogFactoryUtil.getLog(ElasticSearchHelper.class);
+    private static final Log LOGGER = LogFactoryUtil.getLog(EsSearchApiService.class);
 
-    /** The _es connector. */
+    /** The client. */
     @Autowired
-    private ElasticSearchConnector esConnector;
+    private Client client;
 
-    /**
-     * Gets the search hits.
-     *
-     * @param searchContext the search context
-     * @param query the query
-     * @return the search hits
-     */
-    public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
-        LOGGER.debug("Search against Elasticsearch with SearchContext");
+    @Autowired
+    private LiferayIndex index;
 
-        Client client = this.esConnector.getClient();
-
-        String queryString = escape(query.toString());
-        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
-
-        SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
-            ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX
-        ).setQuery(queryBuilder);
-
-        // Handle Search Facet queries
-        if (searchContext.getFacets() != null) {
-            handleFacetQueries(searchContext.getFacets(), searchRequestBuilder);
-        }
-
-        if (getSort(searchContext.getSorts()) != null) {
-            searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
-                    .setSize(searchContext.getEnd())
-                    .addSort(getSort(searchContext.getSorts()));
-        } else {
-            searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
-                    .setSize(searchContext.getEnd());
-        }
-        SearchResponse response = searchRequestBuilder.execute().actionGet();
-        collectFacetResults(searchContext, response);
-        return getHits(query, response, searchContext);
-    }
+    public static final String ELASTIC_SEARCH_TO = "TO";
+    public static final String ELASTIC_SEARCH_VALUES = "values";
+    public static final String ELASTIC_SEARCH_RANGES = "ranges";
+    public static final String ELASTIC_SEARCH_RANGE = "range";
+    public static final String ELASTIC_SEARCH_MAXTERMS = "maxTerms";
+    public static final String ELASTIC_SEARCH_INNERFIELD_MDATE = "modified.modified_date";
 
     /**
      * Gets the search hits.
@@ -124,6 +82,41 @@ public class ElasticSearchHelper {
         searchContext.setSorts(sort);
 
         return getSearchHits(searchContext, query);
+    }
+
+    /**
+     * Gets the search hits.
+     *
+     * @param searchContext the search context
+     * @param query the query
+     * @return the search hits
+     */
+    public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
+        LOGGER.debug("Search against Elasticsearch with SearchContext");
+
+        String queryString = escape(query.toString());
+        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
+
+        SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
+                index.getName()
+        ).setQuery(queryBuilder);
+
+        // Handle Search Facet queries
+        if (searchContext.getFacets() != null) {
+            handleFacetQueries(searchContext.getFacets(), searchRequestBuilder);
+        }
+
+        if (getSort(searchContext.getSorts()) != null) {
+            searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
+                    .setSize(searchContext.getEnd())
+                    .addSort(getSort(searchContext.getSorts()));
+        } else {
+            searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
+                    .setSize(searchContext.getEnd());
+        }
+        SearchResponse response = searchRequestBuilder.execute().actionGet();
+        collectFacetResults(searchContext, response);
+        return getHits(query, response, searchContext);
     }
 
     /**
@@ -236,31 +229,13 @@ public class ElasticSearchHelper {
     }
 
     /**
-     * Parses the es facet to return a map with Entryclassname and its count.
-     *
-     * @param esFacet the es facet
-     * @return the map
-     */
-    private Map<String, Integer> parseESFacet(final Aggregation esFacet) {
-    	Terms terms = (Terms) esFacet;
-    	Collection<Terms.Bucket> buckets = terms.getBuckets();
-      Map<String, Integer> esTermFacetResultMap = new HashMap<String, Integer>();
-      for (Terms.Bucket bucket : buckets) {
-          esTermFacetResultMap.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
-      }
-
-        return esTermFacetResultMap;
-    }
-
-
-    /**
      * This method adds multiple facets to Elastic search query builder.
      *
      * @param facets the facets
      * @param searchRequestBuilder the search request builder
      */
     private void handleFacetQueries(final Map<String, Facet> facets,
-                                          final SearchRequestBuilder searchRequestBuilder) {
+                                    final SearchRequestBuilder searchRequestBuilder) {
         for (Facet facet : facets.values()) {
             if (!facet.isStatic()) {
                 FacetConfiguration liferayFacetConfiguration = facet.getFacetConfiguration();
@@ -268,8 +243,8 @@ public class ElasticSearchHelper {
                 if (facet instanceof MultiValueFacet) {
                     TermsBuilder termsFacetBuilder = AggregationBuilders.terms(liferayFacetConfiguration.getFieldName());
                     termsFacetBuilder.field(liferayFacetConfiguration.getFieldName());
-                    if (liferayFacetDataJSONObject.has(ElasticSearchIndexerConstants.ELASTIC_SEARCH_MAXTERMS)) {
-                        termsFacetBuilder.size(liferayFacetDataJSONObject.getInt(ElasticSearchIndexerConstants.ELASTIC_SEARCH_MAXTERMS));
+                    if (liferayFacetDataJSONObject.has(ELASTIC_SEARCH_MAXTERMS)) {
+                        termsFacetBuilder.size(liferayFacetDataJSONObject.getInt(ELASTIC_SEARCH_MAXTERMS));
                     }
                     searchRequestBuilder.addAggregation(termsFacetBuilder);
                 } else if (facet instanceof RangeFacet) {
@@ -280,8 +255,8 @@ public class ElasticSearchHelper {
                      *[{"range":"[20140603200000 TO 20140603220000]","label":"past-hour"},{"range":"[20140602210000 TO 20140603220000]","label":"past-24-hours"},...]
                      *
                      */
-                    JSONArray rangesJSONArray = liferayFacetDataJSONObject.getJSONArray(ElasticSearchIndexerConstants.ELASTIC_SEARCH_RANGES);
-                    rangeFacetBuilder.field(ElasticSearchIndexerConstants.ELASTIC_SEARCH_INNERFIELD_MDATE);
+                    JSONArray rangesJSONArray = liferayFacetDataJSONObject.getJSONArray(ELASTIC_SEARCH_RANGES);
+                    rangeFacetBuilder.field(ELASTIC_SEARCH_INNERFIELD_MDATE);
                     if (rangesJSONArray != null) {
                         for (int i = 0; i < rangesJSONArray.length(); i++) {
                             JSONObject rangeJSONObject = rangesJSONArray.getJSONObject(i);
@@ -305,7 +280,7 @@ public class ElasticSearchHelper {
      */
     private void collectFacetResults(final SearchContext searchContext, final SearchResponse response) {
 
-        for (Entry<String, Facet> facetEntry: searchContext.getFacets().entrySet()) {
+        for (Map.Entry<String, Facet> facetEntry: searchContext.getFacets().entrySet()) {
             Facet liferayFacet = facetEntry.getValue();
             if (!liferayFacet.isStatic()) {
                 Aggregation esFacet = response.getAggregations().get(facetEntry.getKey());
@@ -338,7 +313,7 @@ public class ElasticSearchHelper {
                             }
                             if (LOGGER.isDebugEnabled()) {
                                 LOGGER.debug("AssetEntriesFacet>>>>>>>>>>>>Term:" + entryClassname
-                                        + " <<<<Count:" + esTermsFacetResults.get(entryClassname.toLowerCase())
+                                                + " <<<<Count:" + esTermsFacetResults.get(entryClassname.toLowerCase())
                                 );
                             }
                         }
@@ -351,12 +326,12 @@ public class ElasticSearchHelper {
                             facetResults.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
                             if (LOGGER.isDebugEnabled()) {
                                 LOGGER.debug("MultiValueFacet>>>>>>>>>>>>Term:" + bucket.getKeyAsString()
-                                        + " <<<<Count:" + bucket.getDocCount()
+                                                + " <<<<Count:" + bucket.getDocCount()
                                 );
                             }
                         }
                     } else if ((liferayFacet instanceof RangeFacet)) {
-                    	Range esRange = (Range) esFacet;
+                        Range esRange = (Range) esFacet;
                         facetResults = new HashMap<String, Integer>();
                         for (Range.Bucket entry : esRange.getBuckets()) {
                             facetResults.put(buildRangeTerm(entry), (int) entry.getDocCount());
@@ -390,7 +365,7 @@ public class ElasticSearchHelper {
         termBuilder.append(StringPool.OPEN_BRACKET);
         termBuilder.append(entry.getFromAsString());
         termBuilder.append(StringPool.SPACE);
-        termBuilder.append(ElasticSearchIndexerConstants.ELASTIC_SEARCH_TO);
+        termBuilder.append(ELASTIC_SEARCH_TO);
         termBuilder.append(StringPool.SPACE);
         termBuilder.append(entry.getToAsString());
         termBuilder.append(StringPool.CLOSE_BRACKET);
@@ -405,7 +380,7 @@ public class ElasticSearchHelper {
      */
     private Set<String> fetchEntryClassnames(final Facet liferayFacet) {
         JSONObject dataJSONObject = liferayFacet.getFacetConfiguration().getData();
-        JSONArray valuesArray = dataJSONObject.getJSONArray(ElasticSearchIndexerConstants.ELASTIC_SEARCH_VALUES);
+        JSONArray valuesArray = dataJSONObject.getJSONArray(ELASTIC_SEARCH_VALUES);
         Set<String> entryClassnames = new HashSet<String>();
         if (valuesArray != null) {
             for (int z = 0; z < valuesArray.length(); z++) {
@@ -422,10 +397,10 @@ public class ElasticSearchHelper {
      * @return the string[]
      */
     private String[] fetchFromToValuesInRage(final JSONObject jsonObject) {
-        String fromToFormatRange = jsonObject.getString(ElasticSearchIndexerConstants.ELASTIC_SEARCH_RANGE);
+        String fromToFormatRange = jsonObject.getString(ELASTIC_SEARCH_RANGE);
         String[] fromToArray = null;
         if (fromToFormatRange != null && fromToFormatRange.length() > 0) {
-            fromToArray = fromToFormatRange.substring(1, fromToFormatRange.length() - 1).split(ElasticSearchIndexerConstants.ELASTIC_SEARCH_TO);
+            fromToArray = fromToFormatRange.substring(1, fromToFormatRange.length() - 1).split(ELASTIC_SEARCH_TO);
         }
         return fromToArray;
     }
@@ -448,5 +423,22 @@ public class ElasticSearchHelper {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Parses the es facet to return a map with Entryclassname and its count.
+     *
+     * @param esFacet the es facet
+     * @return the map
+     */
+    private Map<String, Integer> parseESFacet(final Aggregation esFacet) {
+        Terms terms = (Terms) esFacet;
+        Collection<Terms.Bucket> buckets = terms.getBuckets();
+        Map<String, Integer> esTermFacetResultMap = new HashMap<String, Integer>();
+        for (Terms.Bucket bucket : buckets) {
+            esTermFacetResultMap.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
+        }
+
+        return esTermFacetResultMap;
     }
 }

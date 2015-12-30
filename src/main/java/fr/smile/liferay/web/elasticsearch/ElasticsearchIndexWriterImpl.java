@@ -1,27 +1,20 @@
 package fr.smile.liferay.web.elasticsearch;
 
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.search.*;
+import fr.smile.liferay.web.elasticsearch.api.EsIndexApiService;
+import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
+import fr.smile.liferay.web.elasticsearch.model.document.ElasticSearchJsonDocument;
+import fr.smile.liferay.web.elasticsearch.model.document.ElasticSearchJsonDocumentBuilder;
+import fr.smile.liferay.web.elasticsearch.model.index.LiferayIndex;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
-import com.liferay.portal.kernel.search.*;
-import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.NoNodeAvailableException;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.index.query.QueryStringQueryBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
-
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-
-import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
-import fr.smile.liferay.web.elasticsearch.indexer.ElasticSearchIndexer;
-import fr.smile.liferay.web.elasticsearch.indexer.document.ElasticSearchJsonDocument;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchConnector;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
-import org.springframework.stereotype.Service;
 
 /**
  * @author marem
@@ -30,13 +23,17 @@ import org.springframework.stereotype.Service;
 @Service
 public class ElasticsearchIndexWriterImpl implements IndexWriter {
 
-    /** The indexer. */
+    /** The document json builder. */
     @Autowired
-    private ElasticSearchIndexer indexer;
+    private ElasticSearchJsonDocumentBuilder documentJSONBuilder;
 
-    /** The _es connector. */
     @Autowired
-    private ElasticSearchConnector esConnector;
+    private LiferayIndex index;
+
+    @Autowired
+    private EsIndexApiService elasticsearchApiService;
+
+    public static final String VERSION = "version";
 
     @Override
     public final void addDocument(final SearchContext searchContext, final Document document) throws SearchException {
@@ -51,7 +48,7 @@ public class ElasticsearchIndexWriterImpl implements IndexWriter {
         /** This is to sort the Documents with version field from oldest to latest updates to
          retain the modifications */
         DocumentComparator documentComparator = new DocumentComparator(true, false);
-        documentComparator.addOrderBy(ElasticSearchIndexerConstants.VERSION);
+        documentComparator.addOrderBy(VERSION);
         Collections.sort((List<Document>) documents, documentComparator);
 
         for (Document document : documents) {
@@ -62,7 +59,7 @@ public class ElasticsearchIndexWriterImpl implements IndexWriter {
     @Override
     public final void deleteDocument(final SearchContext searchContext, final String uid) throws SearchException {
         LOGGER.debug("Delete document from elasticsearch indexices");
-        deleteIndexByQuery(uid);
+        elasticsearchApiService.removeDocument(uid, index.getName());
     }
 
     @Override
@@ -94,7 +91,7 @@ public class ElasticsearchIndexWriterImpl implements IndexWriter {
         /** This is to sort the Documents with version field from oldest to latest updates to
          retain the modifications */
         DocumentComparator documentComparator = new DocumentComparator(true, false);
-        documentComparator.addOrderBy(ElasticSearchIndexerConstants.VERSION);
+        documentComparator.addOrderBy(VERSION);
         Collections.sort((List<Document>) documents, documentComparator);
 
         for (Document document : documents) {
@@ -113,69 +110,39 @@ public class ElasticsearchIndexWriterImpl implements IndexWriter {
     private void processIt(final Document document) throws SearchException {
         LOGGER.debug("Processing document for elasticsearch indexing");
         try {
-            ElasticSearchJsonDocument elasticserachJSONDocument = indexer.processDocument(document);
-            writeIndex(elasticserachJSONDocument);
+            ElasticSearchJsonDocument elasticserachJSONDocument = processDocument(document);
+            elasticsearchApiService.writeDocument(elasticserachJSONDocument);
         } catch (ElasticSearchIndexException e) {
             throw new SearchException(e);
         }
     }
 
-    /**
-     * A method to persist Liferay index to Elasticsearch server document.
-     *
-     * @param esDocument
-     *            the json document
-     */
-    private void writeIndex(final ElasticSearchJsonDocument esDocument) {
+    public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents)
+            throws ElasticSearchIndexException {
+        LOGGER.info("Processing multiple document objects for elasticsearch indexing");
 
-        try {
-            if (esDocument.isError()) {
-                LOGGER.warn("Coudln't store document in index. Error..." + esDocument.getErrorMessage());
-            } else {
-                Client client = esConnector.getClient();
-                IndexResponse response = client.prepareIndex(
-                        ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX,
-                		esDocument.getIndexType(),
-                        esDocument.getId()
-                ).setSource(esDocument.getJsonDocument()).execute().actionGet();
-
-                LOGGER.debug("Document indexed successfully with Id: " + esDocument.getId()
-                        + " ,Type:" + esDocument.getIndexType()
-                        + " ,Updated index version:" + response.getVersion());
-            }
-        } catch (NoNodeAvailableException noNodeEx) {
-            LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
+        Collection<ElasticSearchJsonDocument> esDocuments = new ArrayList<ElasticSearchJsonDocument>();
+        // transform Document object into JSON object and send it to
+        // elasticsearch server for indexing
+        for (Document doc : documents) {
+            esDocuments.add(documentJSONBuilder.convertToJSON(doc));
         }
+
+        return esDocuments;
+    }
+
+    public final ElasticSearchJsonDocument processDocument(final Document document)
+            throws ElasticSearchIndexException {
+        Collection<Document> documents = new ArrayList<Document>();
+        documents.add(document);
+        LOGGER.info("Processing Document to update elasticsearch indexes");
+
+        List<ElasticSearchJsonDocument> esDocuments = (List<ElasticSearchJsonDocument>) processDocuments(documents);
+        return esDocuments.get(0);
     }
 
 
-    /**
-     * Delete index by query.
-     *
-     * @param uid
-     *            the uid
-     */
-    private void deleteIndexByQuery(final String uid) {
 
-        try {
-            /** Don't handle plugin deployment documents, skip them */
-            if (!uid.endsWith(ElasticSearchIndexerConstants.WAR)) {
-                Client client = esConnector.getClient();
-                QueryStringQueryBuilder query = QueryBuilders.queryStringQuery(
-                        ElasticSearchIndexerConstants.ELASTIC_SEARCH_QUERY_UID + uid
-                );
-
-                SearchResponse scrollResp = client
-                        .prepareSearch(ElasticSearchIndexerConstants.ELASTIC_SEARCH_LIFERAY_INDEX)
-                        .setQuery(query)
-                        .execute().actionGet();
-
-                LOGGER.debug("Document deleted successfully with Id:" + uid + " , Status:" + scrollResp.status());
-            }
-        } catch (NoNodeAvailableException noNodeEx) {
-            LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
-        }
-    }
 
     /** The Constant LOGGER. */
     private static final Log LOGGER = LogFactoryUtil.getLog(ElasticsearchIndexWriterImpl.class);
