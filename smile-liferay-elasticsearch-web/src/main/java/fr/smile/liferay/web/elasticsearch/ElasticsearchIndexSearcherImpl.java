@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
  * @since 29/10/15.
  */
 @Service
-public class ElasticsearchIndexSearcherImpl implements IndexSearcher {
+public class ElasticsearchIndexSearcherImpl extends BaseIndexSearcher {
 
     /** The _es search helper. */
     @Autowired

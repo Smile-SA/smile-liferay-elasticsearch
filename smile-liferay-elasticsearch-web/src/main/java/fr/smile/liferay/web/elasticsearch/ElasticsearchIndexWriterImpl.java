@@ -21,18 +21,21 @@ import java.util.List;
  * @since 29/10/15.
  */
 @Service
-public class ElasticsearchIndexWriterImpl implements IndexWriter {
+public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
 
     /** The document json builder. */
     @Autowired
     private ElasticSearchJsonDocumentBuilder documentJSONBuilder;
 
+    /** Liferay index. */
     @Autowired
     private LiferayIndex index;
 
+    /** Liferay api service. */
     @Autowired
     private EsIndexApiService elasticsearchApiService;
 
+    /** version. */
     public static final String VERSION = "version";
 
     @Override
@@ -117,6 +120,12 @@ public class ElasticsearchIndexWriterImpl implements IndexWriter {
         }
     }
 
+    /**
+     * Process collection of documents.
+     * @param documents documents to process
+     * @return json document
+     * @throws ElasticSearchIndexException elasticsearch exception
+     */
     public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents)
             throws ElasticSearchIndexException {
         LOGGER.info("Processing multiple document objects for elasticsearch indexing");
@@ -131,6 +140,12 @@ public class ElasticsearchIndexWriterImpl implements IndexWriter {
         return esDocuments;
     }
 
+    /**
+     * Process single document.
+     * @param document document to process
+     * @return json document
+     * @throws ElasticSearchIndexException elasticsearch exception
+     */
     public final ElasticSearchJsonDocument processDocument(final Document document)
             throws ElasticSearchIndexException {
         Collection<Document> documents = new ArrayList<Document>();
