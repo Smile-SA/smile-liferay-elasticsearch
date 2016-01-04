@@ -20,16 +20,16 @@ import java.util.List;
  */
 public class IndexController extends MVCPortlet {
 
-
     @Override
-    public void doView(final RenderRequest renderRequest, final RenderResponse renderResponse) throws IOException, PortletException {
+    public final void doView(final RenderRequest renderRequest, final RenderResponse renderResponse)
+            throws IOException, PortletException {
         long companyId = PortalUtil.getCompanyId(renderRequest);
         renderRequest.setAttribute("indexingPortlets", this.getIndexingPortlets(companyId));
         super.doView(renderRequest, renderResponse);
     }
 
     @Override
-    public void serveResource(final ResourceRequest resourceRequest, final ResourceResponse resourceResponse)
+    public final void serveResource(final ResourceRequest resourceRequest, final ResourceResponse resourceResponse)
             throws IOException, PortletException {
         super.serveResource(resourceRequest, resourceResponse);
     }

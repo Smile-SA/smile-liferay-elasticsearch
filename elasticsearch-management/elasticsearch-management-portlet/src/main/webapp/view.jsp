@@ -15,7 +15,14 @@
 --%>
 
 <%@ taglib uri="http://java.sun.com/portlet_2_0" prefix="portlet" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 
 <portlet:defineObjects />
 
-This is the <b>elasticsearch-management</b>.
+<%--@elvariable id="indexingPortlets" type="java.util.List"--%>
+<c:forEach items="${indexingPortlets}" var="portlet">
+
+    <%--@elvariable id="portlet" type="com.liferay.portal.model.Portlet"--%>
+    ${portlet.displayName}
+</c:forEach>
+
