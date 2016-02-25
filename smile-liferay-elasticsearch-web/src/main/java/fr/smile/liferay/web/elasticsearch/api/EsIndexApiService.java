@@ -17,6 +17,8 @@ import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -47,12 +49,19 @@ public class EsIndexApiService {
      * Creates the liferay index in Elasticsearch server with default dynamic
      * mapping template.
      */
-    public void createIndex(final String index, final String mappings, final String settings) {
+    public void createIndex(final String index, final String mappings_string, final String settings) {
         try {
             CreateIndexRequestBuilder indexBuilder = client.admin().indices().prepareCreate(index);
 
-            if (mappings != null && mappings.length() > 0) {
-                indexBuilder.addMapping("_default_", mappings);
+            if (mappings_string != null && mappings_string.length() > 0) {
+                JSONObject json_mappings = new JSONObject(mappings_string);
+                JSONArray  mappings = json_mappings.getJSONArray("mappings");
+                for(int i=0; i< mappings.length(); i++){
+                    JSONObject obj = mappings.getJSONObject(i);
+                    String type = obj.names().getString(0);
+                    String mapping = obj.getJSONObject(type).toString();
+                    indexBuilder.addMapping(type, mapping);
+                }
             }
 
             if (settings != null && settings.length() > 0) {
@@ -110,7 +119,8 @@ public class EsIndexApiService {
             } else {
                 IndexResponse response = client.prepareIndex(
                         index.getName(),
-                        esDocument.getIndexType(),
+                        //esDocument.getIndexType(),
+                        "LiferayAssetType",
                         esDocument.getId()
                 ).setSource(esDocument.getJsonDocument()).execute().actionGet();
 

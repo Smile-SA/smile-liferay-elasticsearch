@@ -7,11 +7,23 @@
       }
     },
     "analyzer": {
+      "smile_french": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "lowercase", "asciifolding","french_stemmer"]
+      }
+    },
+    "analyzer": {
       "asset_tag_name": {
         "tokenizer": "whitespace",
         "filter": [
           "lowercase", "stop", "trim", "word_delimiter"
         ]
+      }
+    },
+    "filter": {
+      "french_stemmer":{
+        "type": "stemmer",
+        "name": "light_french"
       }
     }
   }

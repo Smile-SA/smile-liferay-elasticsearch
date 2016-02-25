@@ -1,5 +1,7 @@
 package fr.smile.liferay.web.elasticsearch.facet;
 
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
 import com.liferay.portal.kernel.search.facet.collector.TermCollector;
 
@@ -13,6 +15,7 @@ import java.util.Map;
  * @since 30/10/15.
  */
 public class ElasticSearchQueryFacetCollector implements FacetCollector {
+    private static final Log LOGGER = LogFactoryUtil.getLog(ElasticSearchQueryFacetCollector.class);
     /**
      * Instantiates a new elasticsearch query facet collector.
      *
@@ -38,7 +41,8 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
     @Override
     public final TermCollector getTermCollector(final String term) {
         Integer count = this.counts.get(term);
-
+        LOGGER.info("Term : " + term + " " + " count : "+ count );
+        count = count == null ? 0 : count;
         return new ElasticSearchDefaultTermCollector(term, count);
     }
 
