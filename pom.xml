@@ -27,6 +27,7 @@
     <modules>
         <module>smile-liferay-elasticsearch-web</module>
         <module>elasticsearch-management</module>
+        <module>smile-liferay-search-hook</module>
     </modules>
 
     <developers>
