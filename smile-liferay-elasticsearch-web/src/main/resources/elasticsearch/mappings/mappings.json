@@ -1,0 +1,96 @@
+{
+  "mappings":[
+    {
+      "LiferayAssetType": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "title_sortable": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "content": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "uid": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "scopeGroupId": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "visible": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "groupRoleId": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "userId": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "userName": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "roleId": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "entryClassName": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "status": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "assetTagIds": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "entryClassPK": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "groupId": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "companyId": {
+            "index": "not_analyzed",
+            "store": "yes",
+            "type": "string"
+          },
+          "assetTagNames": {
+            "analyzer": "keyword_lowercase",
+            "search_analyzer": "asset_tag_name",
+            "store": "yes",
+            "term_vector": "with_positions_offsets",
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

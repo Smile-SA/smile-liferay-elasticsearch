@@ -76,8 +76,8 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
     @Override
     public final void deletePortletDocuments(final SearchContext searchContext, final String portletId)
             throws SearchException {
-        LOGGER.debug("Delete portlet documents from elasticsearch indexing");
-        throw new SearchException("Portlet deployment documents are not supported");
+        LOGGER.error("Delete portlet documents from elasticsearch indexing");
+        //throw new SearchException("Portlet deployment documents are not supported");
     }
 
     @Override

@@ -137,4 +137,20 @@
             <url>http://pic-java.vitry.intranet/nexus/content/repositories/InternalSmileReleases/</url>
         </repository>
     </repositories>
+
+    <profiles>
+        <profile>
+            <id>elastic-liferay</id>
+            <properties>
+                <liferay.app.server>/home/lxc/elastic-liferay/opt/liferay-portal-6.2-ce-ga6</liferay.app.server>
+                <liferay.auto.deploy.dir>${liferay.app.server}/deploy</liferay.auto.deploy.dir>
+                <liferay.app.server.deploy.dir>${liferay.app.server}/tomcat/webapps</liferay.app.server.deploy.dir>
+                <liferay.app.server.lib.global.dir>${liferay.app.server}/tomcat/lib/ext</liferay.app.server.lib.global.dir>
+                <liferay.app.server.portal.dir>${liferay.app.server}/tomcat/webapps/ROOT</liferay.app.server.portal.dir>
+            </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
 </project>

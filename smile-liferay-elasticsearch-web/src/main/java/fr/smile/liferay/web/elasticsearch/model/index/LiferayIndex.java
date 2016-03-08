@@ -93,7 +93,6 @@ public class LiferayIndex {
     public final void initIndex() {
         try {
             if (!esIndexApiService.isLiferayIndexExists(name)) {
-                LOGGER.debug("Liferay index does not exists, creating it");
                 esIndexApiService.createIndex(name, indexMappings, indexSettings);
             }
         } catch (ElasticsearchException configEx) {
