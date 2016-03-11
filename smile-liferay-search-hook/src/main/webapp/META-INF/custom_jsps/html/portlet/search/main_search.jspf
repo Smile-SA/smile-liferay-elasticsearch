@@ -20,7 +20,17 @@ SearchContainer mainSearchSearchContainer = new SearchContainer(renderRequest, n
 
 SearchContext searchContext = SearchContextFactory.getInstance(request);
 
+// Transform the query to an exact query to send to elastic search
 String exactQuery = "\"" + searchContext.getKeywords().replaceAll("^\"|\"$", "") + "\"";
+// Remove all special characters
+exactQuery = exactQuery.replaceAll("[\\*\\+\\-\\.\\(\\)\\{\\}\\/\\&\\~\\[\\|\\]\\^\\%\\\\]","");
+System.out.println("exact Query : " + exactQuery);
+	// if the query is null after replacement, send a query to get all documents
+	if(exactQuery.equals("\"\"")){
+		System.out.println("empty query");
+		exactQuery = "\"\'\"\"";
+	}
+	System.out.println("final query : " + exactQuery);
 searchContext.setKeywords(exactQuery);
 System.out.println(searchContext.getKeywords());
 

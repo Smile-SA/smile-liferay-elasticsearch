@@ -116,10 +116,10 @@ public class EsSearchApiService {
             }
             newKeywords += ")";
         }
+        // Modify the query to use Fuzzy or Field Grouping
         queryString = queryString.replaceAll("\\*","").replaceAll(":\"" + keywords + "\"",":" + keywords).replaceAll(":" + keywords, ":" + newKeywords);
         System.out.println("After : " + queryString);
         QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
-        LOGGER.info("Query Builder : " + queryBuilder);
         SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
                 index.getName()
         ).setQuery(queryBuilder);

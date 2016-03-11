@@ -57,7 +57,7 @@ request.setAttribute("search.jsp-returnToFullPageURL", portletDisplay.getURLBack
 	<aui:input name="format" type="hidden" value="<%= format %>" />
 
 	<aui:fieldset id="searchContainer">
-		<aui:input id="searchField" autoFocus="<%= windowState.equals(WindowState.MAXIMIZED) %>" inlineField="<%= true %>" label="" name="keywords" size="30" value="<%= HtmlUtil.escape(keywords) %>" />
+		<aui:input id="searchField" autoFocus="<%= windowState.equals(WindowState.MAXIMIZED) %>" inlineField="<%= true %>" label="" name="keywords" size="30" value="<%= HtmlUtil.escape(keywords) %>" autocomplete="off" />
 		<aui:input inlineField="<%= true %>" label="" name="search" src='<%= themeDisplay.getPathThemeImages() + "/common/search.png" %>' title="search" type="image" />
 
 		<aui:input inlineField="<%= true %>" label="" name="clearSearch" src='<%= themeDisplay.getPathThemeImages() + "/common/close.png" %>' title="clear-search" type="image" />
@@ -113,22 +113,81 @@ request.setAttribute("search.jsp-returnToFullPageURL", portletDisplay.getURLBack
 	</c:if>
 </aui:form>
 
+<style type="text/css"> @import url("http://code.jquery.com/ui/1.10.3/themes/smoothness/jquery-ui.css"); </style>
 <aui:script>
-	AUI().use(
-		'aui-autocomplete-deprecated',
-		function(A) {
-			new A.AutoCompleteDeprecated(
-			{
-				contentBox: '#<portlet:namespace/>searchContainer',
-				input: '#<portlet:namespace/>searchField',
-				button: false,
-				dataSource: ['America', 'Europe', 'Asia']
-			}
-			).render();
-		}
-	);
+// AUTOCOMPLETION FEATURE
+AUI().use('get', function(A){
+	// Get jQuery Lib
+	A.Get.script(['http://code.jquery.com/jquery-1.9.1.js','http://code.jquery.com/ui/1.10.3/jquery-ui.js'], {
+		onSuccess: function(){
+			// jQuery AutoComplete feature
+			$(function(){
+				$("#<portlet:namespace />searchField").autocomplete({
+					// Retrieve data from elastic search
+					source: function(request, response){
+						$.ajax({
+							type: "GET",
+							url: "${searchURL}",
+							data: "<portlet:namespace />keywords=" + $("#<portlet:namespace />searchField").val(),
+							success: function(data){
+								// Get title && content from the results
+								var results = new Array();
+								var responseDOM = new DOMParser().parseFromString(data,"text/html");
+								var assetsEntry = responseDOM.getElementsByClassName("asset-entry");
 
+								// Push to array titles
+								for(var i = 0; i < Math.min(assetsEntry.length,5); i++){
+									var assetTitle = assetsEntry[i].getElementsByClassName("asset-entry-title");
+									var assetContent = assetsEntry[i].getElementsByClassName("asset-entry-content");
+									var content = "";
+									if(assetContent.length > 0){
+										content = assetContent[0].innerHTML;
+									}
+									results.push('' + assetTitle[0].innerHTML + content);
+								}
+								response(results);
+							}
+						});
+					},
+					minLength: 3,
+					// Fix the width of the autocomplete widget
+					open: function() {
+						$("#<portlet:namespace />searchField").autocomplete("widget").width(500)
+					},
+					// Set the proper field value when focus
+					focus: function(e, ui) {
+						var inputDOM = new DOMParser().parseFromString(ui.item.label,"text/html");
+						console.log(inputDOM.getElementsByTagName("a")[0].innerHTML.replace(/<img(.*)>/g,"").trim());
+						$("#<portlet:namespace />searchField").val(inputDOM.getElementsByTagName("a")[0].innerHTML.replace(/<img(.*)>/g,"").trim());
+						return false;
+					},
+					// Set the proper field value when select
+					select: function(event, ui) {
+						console.log("select");
+						var inputDOM = new DOMParser().parseFromString(ui.item.label,"text/html");
+						console.log(inputDOM.getElementsByTagName("a")[0].innerHTML.replace(/<img(.*)>/g,"").trim());
+						$("#<portlet:namespace />searchField").val(inputDOM.getElementsByTagName("a")[0].innerHTML.replace(/<img(.*)>/g,"").trim());
+						return false;
+					}
+				});
+				// Escape HTML tags
+				$[ "ui" ][ "autocomplete" ].prototype["_renderItem"] = function( ul, item) {
+					return $( "<li></li>" )
+							.data( "item.autocomplete", item )
+							.append( $( "<a></a>" ).html( item.label ) )
+							.appendTo( ul );
+				};
+
+				// css fix
+				$(".ui-autocomplete").css("white-space","nowrap");
+				$(".ui-autocomplete").css("overflow","hidden");
+			});
+		}
+
+	});
+});
 </aui:script>
+
 <aui:script use="aui-base">
 	A.on(
 		'click',
