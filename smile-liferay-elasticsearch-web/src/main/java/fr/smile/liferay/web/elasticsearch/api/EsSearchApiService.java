@@ -74,7 +74,7 @@ public class EsSearchApiService {
      * @return the search hits
      */
     public final Hits getSearchHits(final Query query, final Sort[] sort, final int start, final int end) {
-        LOGGER.debug("Search against Elasticsearch with query, sort, start and end parameters");
+        LOGGER.info("Search against Elasticsearch with query, sort, start and end parameters");
 
         SearchContext searchContext = new SearchContext();
         searchContext.setStart(start);
@@ -92,11 +92,34 @@ public class EsSearchApiService {
      * @return the search hits
      */
     public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
-        LOGGER.debug("Search against Elasticsearch with SearchContext");
-
+        LOGGER.info("Search against Elasticsearch with SearchContext");
         String queryString = escape(query.toString());
-        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
 
+        // Remove the double quotes from searchContext keywords
+        String keywords = searchContext.getKeywords().replaceAll("\"","");
+        System.out.println("Before : " + queryString);
+        String[] listTerms = keywords.split(" ");
+        String newKeywords = "";
+
+        // If only one keyword, use of Fuzzy
+        if(listTerms.length == 1){
+            newKeywords += listTerms[0] + "~2";
+
+        // If more than one keywords, use of field grouping
+        } else {
+            newKeywords += "(";
+            for(int i = 0; i < listTerms.length; i++) {
+                newKeywords += "+" + listTerms[i];
+                if (i != listTerms.length - 1) {
+                    newKeywords += " ";
+                }
+            }
+            newKeywords += ")";
+        }
+        // Modify the query to use Fuzzy or Field Grouping
+        queryString = queryString.replaceAll("\\*","").replaceAll(":\"" + keywords + "\"",":" + keywords).replaceAll(":" + keywords, ":" + newKeywords);
+        System.out.println("After : " + queryString);
+        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
         SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
                 index.getName()
         ).setQuery(queryBuilder);
