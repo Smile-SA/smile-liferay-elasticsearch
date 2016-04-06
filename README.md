@@ -1,24 +1,22 @@
-Smile Liferay elasticsearch
-===========================
+# Smile Liferay elasticsearch
 
-Table of Contents
------------------
+
+## Table of Contents
 
   * [Requirements](#requirements)
   * [Usage](#usage)
   * [Contributing](#contributing)
 
 
-Requirements
-------------
+## Requirements
 
 This plugin requires the following to run:
 
-  * [Liferay][https://www.liferay.com] 6.1+
-  * [Elasticsearch][https://www.elastic.co/products/elasticsearch] 2.x+
+  * [Liferay](https://www.liferay.com) 6.1+
+  * [Elasticsearch](https://www.elastic.co/products/elasticsearch) 2.x+
 
 
-Usage
+## Usage
 -----
 
 TODO
