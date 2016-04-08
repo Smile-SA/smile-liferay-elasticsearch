@@ -22,18 +22,34 @@ import java.nio.file.Paths;
 @Service
 public class LiferayIndex {
 
+    /**
+     * Index api service.
+     */
     @Autowired
     private EsIndexApiService esIndexApiService;
 
+    /**
+     * Index name.
+     */
     private String name;
 
+    /**
+     * Index settings.
+     */
     private String indexSettings;
 
+    /**
+     * Index mappings.
+     */
     private String indexMappings;
 
     /** The Constant LOGGER. */
     private static final Log LOGGER = LogFactoryUtil.getLog(LiferayIndex.class);
 
+    /**
+     * Constructor
+     * @throws IOException io exception
+     */
     public LiferayIndex() throws IOException {
         this.name = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_INDEX);
 
@@ -71,10 +87,10 @@ public class LiferayIndex {
     /**
      * Check if Liferay index already exists, else create one with
      * default mapping The Index creation is one time setup, so it is
-     * important to check if index already exists before creation
+     * important to check if index already exists before creation.
      */
     @PostConstruct
-    public void initIndex() {
+    public final void initIndex() {
         try {
             if (!esIndexApiService.isLiferayIndexExists(name)) {
                 esIndexApiService.createIndex(name, indexMappings, indexSettings);
@@ -84,27 +100,51 @@ public class LiferayIndex {
         }
     }
 
-    public String getName() {
+    /**
+     * Get name.
+     * @return name
+     */
+    public final String getName() {
         return name;
     }
 
-    public void setName(final String index) {
+    /**
+     * Set name.
+     * @param index index name
+     */
+    public final void setName(final String index) {
         this.name = index;
     }
 
-    public String getIndexSettings() {
+    /**
+     * Get index settings.
+     * @return index settings
+     */
+    public final String getIndexSettings() {
         return indexSettings;
     }
 
-    public void setIndexSettings(final String indexSettings) {
+    /**
+     * Set index settings.
+     * @param indexSettings index settings
+     */
+    public final void setIndexSettings(final String indexSettings) {
         this.indexSettings = indexSettings;
     }
 
-    public String getIndexMappings() {
+    /**
+     * Get index mappings.
+     * @return index mappings
+     */
+    public final String getIndexMappings() {
         return indexMappings;
     }
 
-    public void setIndexMappings(final String indexMappings) {
+    /**
+     * Set index mappings.
+     * @param indexMappings index mappings
+     */
+    public final void setIndexMappings(final String indexMappings) {
         this.indexMappings = indexMappings;
     }
 }
