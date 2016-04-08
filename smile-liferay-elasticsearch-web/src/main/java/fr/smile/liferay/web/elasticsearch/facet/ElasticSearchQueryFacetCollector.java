@@ -37,7 +37,11 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
 
     @Override
     public final TermCollector getTermCollector(final String term) {
-        Integer count = this.counts.get(term);
+        int count = 0;
+
+        if (this.counts.get(term) != null) {
+            count = this.counts.get(term);
+        }
 
         return new ElasticSearchDefaultTermCollector(term, count);
     }
