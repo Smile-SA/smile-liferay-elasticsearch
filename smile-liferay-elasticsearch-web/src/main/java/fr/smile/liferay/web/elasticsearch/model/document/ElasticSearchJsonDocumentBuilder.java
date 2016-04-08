@@ -1,19 +1,26 @@
 package fr.smile.liferay.web.elasticsearch.model.document;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Collections2;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.util.StringPool;
+import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,15 +34,14 @@ public class ElasticSearchJsonDocumentBuilder {
     /** The Constant LOGGER. */
     private static final Log LOGGER = LogFactoryUtil.getLog(ElasticSearchJsonDocumentBuilder.class);
 
+    /**
+     * Exclude types.
+     */
     @Value("${indexExcludedType}")
     private String excludedTypesProperty;
 
     /** The excluded types. */
     private Set<String> excludedTypes;
-
-    public static final String ENTRY_CLASSNAME = "entryClassName";
-    public static final String ENTRY_CLASSPK = "entryClassPK";
-    public static final String HIDDEN = "hidden";
 
     /**
      * Init method.
@@ -45,7 +51,7 @@ public class ElasticSearchJsonDocumentBuilder {
         if (Validator.isNotNull(excludedTypesProperty)) {
             excludedTypes = new HashSet<String>();
             String[] excludedTypesArray = excludedTypesProperty.split(StringPool.COMMA);
-            for (String excludedType : excludedTypesArray) {
+            for (String excludedType : Arrays.asList(excludedTypesArray)) {
                 excludedTypes.add(excludedType);
             }
             LOGGER.debug("Loaded Excluded index types are:" + excludedTypesProperty);
@@ -63,81 +69,115 @@ public class ElasticSearchJsonDocumentBuilder {
      */
     public final ElasticSearchJsonDocument convertToJSON(final Document document) {
 
-        Map<String, Field> fields = document.getFields();
-        ElasticSearchJsonDocument elasticserachJSONDocument = new ElasticSearchJsonDocument();
 
+        ElasticSearchJsonDocument elasticsearchJSONDocument = new ElasticSearchJsonDocument();
         try {
             XContentBuilder contentBuilder = XContentFactory.jsonBuilder().startObject();
 
-            Field classnameField = fields.get(ENTRY_CLASSNAME);
-            String entryClassName = "";
-            if (classnameField != null) {
-                entryClassName = classnameField.getValue();
+            if (!isValid(document, elasticsearchJSONDocument)) {
+                return elasticsearchJSONDocument;
             }
-
-            /**
-             * Handle all error scenarios prior to conversion
-             */
-            if (isDocumentHidden(document)) {
-                elasticserachJSONDocument.setError(true);
-                elasticserachJSONDocument.setErrorMessage(
-                        "" + ElasticSearchJsonDocument.DocumentError.HIDDEN_DOCUMENT
-                );
-                return elasticserachJSONDocument;
-            }
-            if (entryClassName.isEmpty()) {
-                elasticserachJSONDocument.setError(true);
-                elasticserachJSONDocument.setErrorMessage(
-                        "" + ElasticSearchJsonDocument.DocumentError.MISSING_ENTRYCLASSNAME
-                );
-                return elasticserachJSONDocument;
-            }
-            if (isExcludedType(entryClassName)) {
-                elasticserachJSONDocument.setError(true);
-                elasticserachJSONDocument.setErrorMessage(
-                        "Index Type:" + entryClassName
-                        + StringPool.COMMA
-                        + ElasticSearchJsonDocument.DocumentError.EXCLUDED_TYPE
-                );
-                return elasticserachJSONDocument;
-            }
-
-            /**
-             * To avoid multiple documents for versioned assets such as Journal articles, DL entry etc
-             * the primary Id will be Indextype + Entry class PK. The primary Id is to maintain uniqueness
-             * in ES server database and nothing to do with UID or is not used for any other purpose.
-             */
-            Field classPKField = fields.get(ENTRY_CLASSPK);
-            String entryClassPK = "";
-            if (classPKField != null) {
-                entryClassPK = classPKField.getValue();
-            }
-            if (entryClassPK.isEmpty()) {
-                elasticserachJSONDocument.setError(true);
-                elasticserachJSONDocument.setErrorMessage(
-                        "" + ElasticSearchJsonDocument.DocumentError.MISSING_CLASSPK
-                );
-            }
-
-            /** Replace '.' by '_' in Entry class name,since '.' is not recommended by Elasticsearch in Index type */
-            String indexType = entryClassName.replace(StringPool.PERIOD, StringPool.UNDERLINE);
-            elasticserachJSONDocument.setIndexType(indexType);
-
-            elasticserachJSONDocument.setId(indexType + entryClassPK);
 
             /** Create a JSON string for remaining fields of document */
+            Map<String, Field> fields = document.getFields();
             for (Map.Entry<String, Field> entry :  fields.entrySet()) {
                 Field field = entry.getValue();
-                contentBuilder.field(entry.getKey(), field.getValue());
+
+                Collection<String> values = null;
+                if (field.getValues() != null && field.getValues().length > 1) {
+                    List<String> tempList = Arrays.asList(field.getValues());
+
+                    Predicate<String> isNotEmptyElementPredicate = new Predicate<String>() {
+                        public boolean apply(final String p) {
+                            String value = p.trim();
+                            return !"".equals(value);
+                        }
+                    };
+
+                    values = Collections2.filter(tempList, isNotEmptyElementPredicate);
+                }
+
+                if (values != null && values.size() > 0) {
+                    contentBuilder.array(entry.getKey(), values.toArray());
+                } else {
+                    String value = field.getValue();
+                    if (value != null) {
+                        contentBuilder.field(entry.getKey(), value.trim());
+                    }
+                }
             }
             contentBuilder.endObject();
 
-            elasticserachJSONDocument.setJsonDocument(contentBuilder.string());
+            elasticsearchJSONDocument.setJsonDocument(contentBuilder.string());
             LOGGER.debug("Liferay Document converted to ESJSON document successfully:" + contentBuilder.string());
         } catch (IOException e) {
             LOGGER.error("IO Error during converstion of Liferay Document to JSON format" + e.getMessage());
         }
-        return elasticserachJSONDocument;
+        return elasticsearchJSONDocument;
+    }
+
+    /**
+     * Checks if liferay document is valid to index.
+     * @param liferayDocument liferay document
+     * @param document document to index
+     * @return true if valid
+     */
+    private boolean isValid(final Document liferayDocument, final ElasticSearchJsonDocument document) {
+        Map<String, Field> fields = liferayDocument.getFields();
+        Field classnameField = fields.get(Field.ENTRY_CLASS_NAME);
+        String entryClassName = "";
+        if (classnameField != null) {
+            entryClassName = classnameField.getValue();
+        }
+
+        /**
+         * To avoid multiple documents for versioned assets such as Journal articles, DL entry etc
+         * the primary Id will be Indextype + Entry class PK. The primary Id is to maintain uniqueness
+         * in ES server database and nothing to do with UID or is not used for any other purpose.
+         */
+        Field classPKField = fields.get(Field.ENTRY_CLASS_PK);
+        String entryClassPK = "";
+        if (classPKField != null) {
+            entryClassPK = classPKField.getValue();
+        }
+        if (entryClassPK.isEmpty()) {
+            document.setError(true);
+            document.setErrorMessage(
+                    "" + ElasticSearchJsonDocument.DocumentError.MISSING_CLASSPK
+            );
+            return false;
+        }
+
+        /** Replace '.' by '_' in Entry class name,since '.' is not recommended by Elasticsearch in Index type */
+        String indexType = entryClassName.replace(StringPool.PERIOD, StringPool.UNDERLINE);
+        document.setIndexType(indexType);
+        document.setId(indexType + entryClassPK);
+
+        if (isDocumentHidden(liferayDocument)) {
+            document.setError(true);
+            document.setErrorMessage(
+                    "" + ElasticSearchJsonDocument.DocumentError.HIDDEN_DOCUMENT
+            );
+            return false;
+        }
+        if (entryClassName.isEmpty()) {
+            document.setError(true);
+            document.setErrorMessage(
+                    "" + ElasticSearchJsonDocument.DocumentError.MISSING_ENTRYCLASSNAME
+            );
+            return false;
+        }
+        if (isExcludedType(entryClassName)) {
+            document.setError(true);
+            document.setErrorMessage(
+                    "Index Type:" + entryClassName
+                            + StringPool.COMMA
+                            + ElasticSearchJsonDocument.DocumentError.EXCLUDED_TYPE
+            );
+            return false;
+        }
+
+        return true;
     }
 
 
@@ -148,7 +188,7 @@ public class ElasticSearchJsonDocumentBuilder {
      * @return true, if is document hidden
      */
     private boolean isDocumentHidden(final Document document) {
-        Field hiddenField = document.getFields().get(HIDDEN);
+        Field hiddenField = document.getFields().get(Field.HIDDEN);
         boolean hiddenFlag = false;
         if (hiddenField != null) {
             hiddenFlag = Boolean.getBoolean(hiddenField.getValue());
