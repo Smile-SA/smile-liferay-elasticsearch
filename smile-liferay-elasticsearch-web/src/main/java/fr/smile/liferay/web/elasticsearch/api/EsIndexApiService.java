@@ -9,6 +9,7 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -17,6 +18,8 @@ import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,7 +101,29 @@ public class EsIndexApiService {
                         .setQuery(query)
                         .execute().actionGet();
 
-                LOGGER.debug("Document deleted successfully with Id:" + uid + " , Status:" + scrollResp.status());
+                SearchHits hits = scrollResp.getHits();
+
+                final int entriesToDelete = hits.getHits().length;
+
+                LOGGER.debug( "Prepare to delete: " + entriesToDelete + " entries from index");
+
+                for ( SearchHit hit : hits )
+                {
+                    LOGGER.debug("Deleting entry with id : " + hit.getId());
+                    DeleteResponse deleteResponse = client.prepareDelete(
+                            this.index.getName(),
+                            "LiferayAssetType",
+                            hit.getId())
+                            .setRefresh(true)
+                            .execute()
+                            .actionGet();
+
+                    if(deleteResponse.isFound()){
+                        LOGGER.debug("Document deleted successfully with id : " + hit.getId());
+                    } else {
+                        LOGGER.debug("Document with id : " + hit.getId() + "is not found");
+                    }
+                }
             }
         } catch (NoNodeAvailableException noNodeEx) {
             LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
