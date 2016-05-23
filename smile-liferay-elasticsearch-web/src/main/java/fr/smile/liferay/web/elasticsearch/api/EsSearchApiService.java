@@ -492,7 +492,7 @@ public class EsSearchApiService {
         Collection<Terms.Bucket> buckets = terms.getBuckets();
         Map<String, Integer> esTermFacetResultMap = new HashMap<>();
         for (Terms.Bucket bucket : buckets) {
-            esTermFacetResultMap.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
+            esTermFacetResultMap.put(bucket.getKeyAsString().toLowerCase(), (int) bucket.getDocCount());
         }
 
         return esTermFacetResultMap;
