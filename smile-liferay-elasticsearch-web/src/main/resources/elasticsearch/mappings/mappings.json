@@ -12,6 +12,12 @@
             "type": "string",
             "index": "not_analyzed"
           },
+          "modified": {
+            "type": "long"
+          },
+          "modified_sortable": {
+            "type": "long"
+          },
           "content": {
             "type": "string",
             "index": "analyzed",

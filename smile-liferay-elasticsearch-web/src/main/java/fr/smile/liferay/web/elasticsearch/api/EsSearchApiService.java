@@ -115,7 +115,7 @@ public class EsSearchApiService {
     /**
      * Modified.
      */
-    public static final String ELASTIC_SEARCH_INNERFIELD_MDATE = "modified.modified_date";
+    public static final String ELASTIC_SEARCH_INNERFIELD_MDATE = "modified";
 
     /**
      * Gets the search hits.
@@ -422,10 +422,21 @@ public class EsSearchApiService {
      * @return the string
      */
     private String buildRangeTerm(final Range.Bucket entry) {
-        return StringPool.OPEN_BRACKET + entry.getFromAsString()
-                + StringPool.SPACE + ELASTIC_SEARCH_TO
-                + StringPool.SPACE + entry.getToAsString()
-                + StringPool.CLOSE_BRACKET;
+        // Try to convert to long
+        try {
+            long from = (long) ((double) entry.getFrom());
+            long to = (long) ((double) entry.getTo());
+            return StringPool.OPEN_BRACKET + from
+                    + StringPool.SPACE + ELASTIC_SEARCH_TO
+                    + StringPool.SPACE + to
+                    + StringPool.CLOSE_BRACKET;
+        } catch (NumberFormatException e) {
+            // If from or to can't be casted to long return string value
+            return StringPool.OPEN_BRACKET + entry.getFromAsString()
+                    + StringPool.SPACE + ELASTIC_SEARCH_TO
+                    + StringPool.SPACE + entry.getToAsString()
+                    + StringPool.CLOSE_BRACKET;
+        }
     }
 
     /**
