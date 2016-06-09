@@ -9,7 +9,7 @@
     "analyzer": {
       "smile_french": {
         "tokenizer": "standard",
-        "filter":  ["standard", "lowercase","asciifolding","french_stemmer"]
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","french_stemmer"]
       }
     },
     "analyzer": {
