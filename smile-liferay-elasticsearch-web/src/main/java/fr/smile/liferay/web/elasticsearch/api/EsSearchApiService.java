@@ -54,6 +54,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author marem
@@ -127,8 +129,6 @@ public class EsSearchApiService {
      * @return the search hits
      */
     public final Hits getSearchHits(final Query query, final Sort[] sort, final int start, final int end) {
-        LOGGER.info("Search against Elasticsearch with query, sort, start and end parameters");
-
         SearchContext searchContext = new SearchContext();
         searchContext.setStart(start);
         searchContext.setEnd(end);
@@ -145,12 +145,12 @@ public class EsSearchApiService {
      * @return the search hits
      */
     public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
-        LOGGER.info("Search against Elasticsearch with SearchContext");
         String queryString = escape(query.toString());
 
         if (isFuzzyEnabled) {
             queryString = replaceKeywords(queryString, searchContext.getKeywords());
         }
+        queryString = escapeCustomFields(queryString);
 
         QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
         SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
@@ -242,8 +242,6 @@ public class EsSearchApiService {
      * @return the documents
      */
     private Document[] getDocuments(final SearchHits searchHits, final SearchContext searchContext) {
-        LOGGER.info("Getting document objects from SearchHits");
-
         String[] types = searchContext.getEntryClassNames();
         if (searchHits != null && searchHits.getTotalHits() > 0) {
             int failedJsonCount = 0;
@@ -490,6 +488,22 @@ public class EsSearchApiService {
         }
 
         return sb.toString();
+    }
+
+    public static String escapeCustomFields(String s){
+        Matcher m = Pattern.compile("custom_fields[A-Za-z\\\\/]*?\\s.*?:").matcher(s);
+        int offset = 0;
+        while(m.find()){
+            int start = m.start() + offset;
+            int end = m.end() + offset;
+            String substring = s.substring(start, end);
+            String startString = s.substring(0,start);
+            String endString = s.substring(end, s.length());
+            String middleString = substring.replaceAll(" ","\\\\ ");
+            offset += middleString.length() - substring.length();
+            s = startString + middleString + endString;
+        }
+        return s;
     }
 
     /**
