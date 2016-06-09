@@ -9,7 +9,7 @@
     "analyzer": {
       "smile_french": {
         "tokenizer": "standard",
-        "filter":  ["standard", "lowercase","asciifolding","synonyms","french_stemmer"]
+        "filter":  ["standard", "lowercase","asciifolding","french_stemmer"]
       }
     },
     "analyzer": {
@@ -24,12 +24,6 @@
       "french_stemmer":{
         "type": "stemmer",
         "name": "light_french"
-      }
-    },
-    "filter": {
-      "synonyms":{
-        "type": "synonym",
-        "synonyms_path": "synonym.txt"
       }
     }
   }
