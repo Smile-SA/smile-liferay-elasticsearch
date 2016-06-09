@@ -23,6 +23,21 @@
             "index": "analyzed",
             "analyzer": "smile_french"
           },
+          "content_fr_FR": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "description": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "description_fr_FR": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
           "uid": {
             "index": "not_analyzed",
             "store": "yes",
