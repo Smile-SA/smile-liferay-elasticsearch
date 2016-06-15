@@ -13,6 +13,30 @@
       }
     },
     "analyzer": {
+      "smile_english": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","english_stemmer"]
+      }
+    },
+    "analyzer": {
+      "smile_spanish": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","spanish_stemmer"]
+      }
+    },
+    "analyzer": {
+      "smile_italian": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","italian_stemmer"]
+      }
+    },
+    "analyzer": {
+      "smile_dutch": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","dutch_stemmer"]
+      }
+    },
+    "analyzer": {
       "asset_tag_name": {
         "tokenizer": "whitespace",
         "filter": [
@@ -24,6 +48,30 @@
       "french_stemmer":{
         "type": "stemmer",
         "name": "light_french"
+      }
+    },
+    "filter": {
+      "english_stemmer":{
+        "type": "stemmer",
+        "name": "light_english"
+      }
+    },
+    "filter": {
+      "spanish_stemmer":{
+        "type": "stemmer",
+        "name": "light_spanish"
+      }
+    },
+    "filter": {
+      "italian_stemmer":{
+        "type": "stemmer",
+        "name": "light_italian"
+      }
+    },
+    "filter": {
+      "dutch_stemmer":{
+        "type": "stemmer",
+        "name": "dutch"
       }
     }
   }
