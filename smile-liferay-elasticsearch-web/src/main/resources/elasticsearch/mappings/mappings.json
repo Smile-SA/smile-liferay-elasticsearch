@@ -13,6 +13,11 @@
             "index": "analyzed",
             "analyzer": "smile_french"
           },
+          "title_fr_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
           "title_en_EN": {
             "type": "string",
             "index": "analyzed",
@@ -29,6 +34,11 @@
             "analyzer": "smile_italian"
           },
           "title_nl_NL": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
+          "title_nl_BE": {
             "type": "string",
             "index": "analyzed",
             "analyzer": "smile_dutch"
@@ -53,6 +63,11 @@
             "index": "analyzed",
             "analyzer": "smile_french"
           },
+          "content_fr_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
           "content_en_EN": {
             "type": "string",
             "index": "analyzed",
@@ -73,12 +88,22 @@
             "index": "analyzed",
             "analyzer": "smile_dutch"
           },
+          "content_nl_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
           "description": {
             "type": "string",
             "index": "analyzed",
             "analyzer": "smile_french"
           },
           "description_fr_FR": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "description_fr_BE": {
             "type": "string",
             "index": "analyzed",
             "analyzer": "smile_french"
@@ -99,6 +124,11 @@
             "analyzer": "smile_italian"
           },
           "description_nl_NL": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
+          "description_nl_BE": {
             "type": "string",
             "index": "analyzed",
             "analyzer": "smile_dutch"
