@@ -5,8 +5,7 @@
         "properties": {
           "title": {
             "type": "string",
-            "index": "analyzed",
-            "analyzer": "smile_french"
+            "index": "not_analyzed"
           },
           "title_fr_FR": {
             "type": "string",
@@ -55,8 +54,7 @@
           },
           "content": {
             "type": "string",
-            "index": "analyzed",
-            "analyzer": "smile_french"
+            "index": "not_analyzed"
           },
           "content_fr_FR": {
             "type": "string",
@@ -95,8 +93,7 @@
           },
           "description": {
             "type": "string",
-            "index": "analyzed",
-            "analyzer": "smile_french"
+            "index": "not_analyzed"
           },
           "description_fr_FR": {
             "type": "string",
