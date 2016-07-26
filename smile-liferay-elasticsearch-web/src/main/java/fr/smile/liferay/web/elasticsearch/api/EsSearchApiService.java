@@ -490,20 +490,26 @@ public class EsSearchApiService {
         return sb.toString();
     }
 
-    public static String escapeCustomFields(String s){
-        Matcher m = Pattern.compile("custom_fields[A-Za-z\\\\/]*?\\s.*?:").matcher(s);
+    /**
+     * Escape custom field string value.
+     * @param s string
+     * @return escaped custom field string value
+     */
+    public static String escapeCustomFields(final String s) {
+        String escapedCustomFieldValue = s;
+        Matcher m = Pattern.compile("custom_fields[A-Za-z\\\\/]*?\\s.*?:").matcher(escapedCustomFieldValue);
         int offset = 0;
-        while(m.find()){
+        while (m.find()) {
             int start = m.start() + offset;
             int end = m.end() + offset;
-            String substring = s.substring(start, end);
-            String startString = s.substring(0,start);
-            String endString = s.substring(end, s.length());
-            String middleString = substring.replaceAll(" ","\\\\ ");
+            String substring = escapedCustomFieldValue.substring(start, end);
+            String startString = escapedCustomFieldValue.substring(0, start);
+            String endString = escapedCustomFieldValue.substring(end, escapedCustomFieldValue.length());
+            String middleString = substring.replaceAll(" ", "\\\\ ");
             offset += middleString.length() - substring.length();
-            s = startString + middleString + endString;
+            escapedCustomFieldValue = startString + middleString + endString;
         }
-        return s;
+        return escapedCustomFieldValue;
     }
 
     /**

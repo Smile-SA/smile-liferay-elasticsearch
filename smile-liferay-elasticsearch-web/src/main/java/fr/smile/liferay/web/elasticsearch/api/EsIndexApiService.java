@@ -48,6 +48,11 @@ public class EsIndexApiService {
     public static final String ELASTIC_SEARCH_QUERY_UID = ELASTIC_SEARCH_UID + StringPool.COLON;
 
     /**
+     * Document type.
+     */
+    public static final String DOCUMENT_TYPE = "LiferayAssetType";
+
+    /**
      * War type.
      */
     public static final String WAR = "/war";
@@ -125,12 +130,10 @@ public class EsIndexApiService {
                 for (SearchHit hit : hits) {
                     LOGGER.debug("Deleting entry with id : " + hit.getId());
                     DeleteResponse deleteResponse = client.prepareDelete(
-                            this.index.getName(),
-                            "LiferayAssetType",
+                            index,
+                            hit.getType(),
                             hit.getId())
-                            .setRefresh(true)
-                            .execute()
-                            .actionGet();
+                            .get();
 
                     if (deleteResponse.isFound()) {
                         LOGGER.debug("Document deleted successfully with id : " + hit.getId());
@@ -158,8 +161,7 @@ public class EsIndexApiService {
             } else {
                 IndexResponse response = client.prepareIndex(
                         index.getName(),
-                        //esDocument.getIndexType(),
-                        "LiferayAssetType",
+                        DOCUMENT_TYPE,
                         esDocument.getId()
                 ).setSource(esDocument.getJsonDocument()).execute().actionGet();
 
