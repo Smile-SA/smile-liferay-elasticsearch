@@ -77,9 +77,9 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20160212</version>
+            <groupId>fr.smile.liferay.elasticsearch</groupId>
+            <artifactId>elasticsearch-client</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

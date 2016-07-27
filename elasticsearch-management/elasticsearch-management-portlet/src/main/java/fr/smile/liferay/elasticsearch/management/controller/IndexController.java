@@ -8,6 +8,9 @@ import com.liferay.portal.service.PortletLocalServiceUtil;
 import com.liferay.portal.util.PortalUtil;
 import com.liferay.portal.util.comparator.PortletLuceneComparator;
 import com.liferay.util.bridges.mvc.MVCPortlet;
+import fr.smile.liferay.elasticsearch.client.model.Index;
+import org.elasticsearch.client.Client;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.portlet.*;
 import java.io.IOException;
@@ -20,11 +23,17 @@ import java.util.List;
  */
 public class IndexController extends MVCPortlet {
 
+    @Autowired
+    private Client client;
+
+    @Autowired
+    private Index index;
+
     @Override
     public final void doView(final RenderRequest renderRequest, final RenderResponse renderResponse)
             throws IOException, PortletException {
-        long companyId = PortalUtil.getCompanyId(renderRequest);
-        renderRequest.setAttribute("indexingPortlets", this.getIndexingPortlets(companyId));
+
+        renderRequest.setAttribute("index", index);
         super.doView(renderRequest, renderResponse);
     }
 

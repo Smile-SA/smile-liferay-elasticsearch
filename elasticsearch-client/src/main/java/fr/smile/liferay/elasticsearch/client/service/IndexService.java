@@ -1,10 +1,10 @@
-package fr.smile.liferay.web.elasticsearch.api;
+package fr.smile.liferay.elasticsearch.client.service;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.StringPool;
-import fr.smile.liferay.web.elasticsearch.model.document.ElasticSearchJsonDocument;
-import fr.smile.liferay.web.elasticsearch.model.index.LiferayIndex;
+import fr.smile.liferay.elasticsearch.client.model.ElasticSearchJsonDocument;
+import fr.smile.liferay.elasticsearch.client.model.Index;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
@@ -25,17 +25,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import javax.annotation.PreDestroy;
-
 /**
  * @author marem
- * @since 30/12/15.
+ * @since 27/07/16.
  */
 @Service
-public class EsIndexApiService {
+public class IndexService {
 
     /** The Constant LOGGER. */
-    private static final Log LOGGER = LogFactoryUtil.getLog(EsIndexApiService.class);
+    private static final Log LOGGER = LogFactoryUtil.getLog(IndexService.class);
 
     /**
      * Elastic search uid field.
@@ -47,23 +45,24 @@ public class EsIndexApiService {
      */
     public static final String ELASTIC_SEARCH_QUERY_UID = ELASTIC_SEARCH_UID + StringPool.COLON;
 
-    /**
-     * Document type.
-     */
-    public static final String DOCUMENT_TYPE = "LiferayAssetType";
-
-    /**
-     * War type.
-     */
-    public static final String WAR = "/war";
-
     /** The client. */
     @Autowired
     private Client client;
 
-    /** Liferay index. */
-    @Autowired
-    private LiferayIndex index;
+    /**
+     * Checks if index exists.
+     *
+     * @param index index
+     *
+     * @return true, if liferay index exists in Elasticsearch server
+     */
+    public final boolean checkIfIndexExists(final String index) {
+        IndicesExistsResponse existsResponse = client.admin().indices()
+                .exists(new IndicesExistsRequest(index))
+                .actionGet();
+
+        return existsResponse.isExists();
+    }
 
     /**
      * Creates the liferay index in Elasticsearch server with default dynamic
@@ -78,7 +77,7 @@ public class EsIndexApiService {
 
             if (!StringUtils.isEmpty(mappings)) {
                 JSONObject jsonMappings = new JSONObject(mappings);
-                JSONArray  jsonMappingsJSONArray = jsonMappings.getJSONArray("mappings");
+                JSONArray jsonMappingsJSONArray = jsonMappings.getJSONArray("mappings");
                 for (int i = 0; i < jsonMappingsJSONArray.length(); i++) {
                     JSONObject obj = jsonMappingsJSONArray.getJSONObject(i);
                     String type = obj.names().getString(0);
@@ -103,7 +102,35 @@ public class EsIndexApiService {
     }
 
     /**
-     * Delete index.
+     * A method to persist Liferay index to Elasticsearch server document.
+     *
+     * @param index index
+     * @param esDocument
+     *            the json document
+     */
+    public final void writeDocument(final Index index, final ElasticSearchJsonDocument esDocument) {
+
+        try {
+            if (esDocument.isError()) {
+                LOGGER.warn("Coudln't store document in index. Error..." + esDocument.getErrorMessage());
+            } else {
+                IndexResponse response = client.prepareIndex(
+                        index.getName(),
+                        esDocument.getIndexType(),
+                        esDocument.getId()
+                ).setSource(esDocument.getJsonDocument()).execute().actionGet();
+
+                LOGGER.debug("Document indexed successfully with Id: " + esDocument.getId()
+                        + " ,Type:" + esDocument.getIndexType()
+                        + " ,Updated index version:" + response.getVersion());
+            }
+        } catch (NoNodeAvailableException noNodeEx) {
+            LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
+        }
+    }
+
+    /**
+     * Remove document from index.
      * @param uid document uid
      * @param index index
      */
@@ -111,7 +138,7 @@ public class EsIndexApiService {
 
         try {
             /** Don't handle plugin deployment documents, skip them */
-            if (!uid.endsWith(WAR)) {
+
                 QueryStringQueryBuilder query = QueryBuilders.queryStringQuery(
                         ELASTIC_SEARCH_QUERY_UID + uid
                 );
@@ -141,64 +168,8 @@ public class EsIndexApiService {
                         LOGGER.debug("Document with id : " + hit.getId() + "is not found");
                     }
                 }
-            }
         } catch (NoNodeAvailableException noNodeEx) {
             LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
         }
-    }
-
-    /**
-     * A method to persist Liferay index to Elasticsearch server document.
-     *
-     * @param esDocument
-     *            the json document
-     */
-    public final void writeDocument(final ElasticSearchJsonDocument esDocument) {
-
-        try {
-            if (esDocument.isError()) {
-                LOGGER.warn("Coudln't store document in index. Error..." + esDocument.getErrorMessage());
-            } else {
-                IndexResponse response = client.prepareIndex(
-                        index.getName(),
-                        DOCUMENT_TYPE,
-                        esDocument.getId()
-                ).setSource(esDocument.getJsonDocument()).execute().actionGet();
-
-                LOGGER.debug("Document indexed successfully with Id: " + esDocument.getId()
-                        + " ,Type:" + esDocument.getIndexType()
-                        + " ,Updated index version:" + response.getVersion());
-            }
-        } catch (NoNodeAvailableException noNodeEx) {
-            LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
-        }
-    }
-
-    /**
-     * Checks if Liferay index exists.
-     *
-     * @param index index
-     *
-     * @return true, if liferay index exists in Elasticsearch server
-     */
-    public final boolean isLiferayIndexExists(final String index) {
-        IndicesExistsResponse existsResponse = client.admin().indices()
-                .exists(new IndicesExistsRequest(index))
-                .actionGet();
-
-        return existsResponse.isExists();
-    }
-
-    /**
-     * The Close is run during destroying the spring context. The client object
-     * need to be closed to avoid overlock exceptions
-     */
-    @PreDestroy
-    public final void close() {
-        LOGGER.info("About to close Client........");
-        if (client != null) {
-            client.close();
-        }
-        LOGGER.info("Successfully closed Client........");
     }
 }

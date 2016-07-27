@@ -1,10 +1,10 @@
-package fr.smile.liferay.web.elasticsearch.model.index;
+package fr.smile.liferay.elasticsearch.client.model;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
-import fr.smile.liferay.web.elasticsearch.api.EsIndexApiService;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
+import fr.smile.liferay.elasticsearch.client.ElasticSearchIndexerConstants;
+import fr.smile.liferay.elasticsearch.client.service.IndexService;
 import org.elasticsearch.ElasticsearchException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,13 +20,13 @@ import java.nio.file.Paths;
  * @since 29/10/15.
  */
 @Service
-public class LiferayIndex {
+public class Index {
 
     /**
      * Index api service.
      */
     @Autowired
-    private EsIndexApiService esIndexApiService;
+    private IndexService indexService;
 
     /**
      * Index name.
@@ -44,44 +44,18 @@ public class LiferayIndex {
     private String indexMappings;
 
     /** The Constant LOGGER. */
-    private static final Log LOGGER = LogFactoryUtil.getLog(LiferayIndex.class);
+    private static final Log LOGGER = LogFactoryUtil.getLog(Index.class);
 
     /**
-     * Constructor
-     * @throws IOException io exception
+     * Constructor.
+     * @param name index name
+     * @param settings index settings
+     * @param mappings index mappings
      */
-    public LiferayIndex() throws IOException {
-        this.name = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_INDEX);
-
-        String settingsFilePath = PropsUtil.get(ElasticSearchIndexerConstants.ES_SETTINGS_PATH);
-        if (settingsFilePath == null) {
-            ClassLoader classLoader = getClass().getClassLoader();
-            URL url = classLoader.getResource("elasticsearch/settings/settings.json");
-            if (url != null) {
-                settingsFilePath = url.getPath();
-            }
-        }
-
-        if (settingsFilePath == null) {
-            throw new ElasticsearchException("Error on retrieving index settings");
-        }
-
-        indexSettings = new String(Files.readAllBytes(Paths.get(settingsFilePath)));
-
-        String mappingsFilePath = PropsUtil.get(ElasticSearchIndexerConstants.ES_MAPPINGS_PATH);
-        if (mappingsFilePath == null) {
-            ClassLoader classLoader = getClass().getClassLoader();
-            URL url = classLoader.getResource("elasticsearch/mappings/mappings.json");
-            if (url != null) {
-                mappingsFilePath = url.getPath();
-            }
-        }
-
-        if (mappingsFilePath == null) {
-            throw new ElasticsearchException("Error on retrieving index mappings");
-        }
-
-        indexMappings = new String(Files.readAllBytes(Paths.get(mappingsFilePath)));
+    public Index(final String name, final String settings, final String mappings) {
+        this.name = name;
+        this.indexSettings = settings;
+        this.indexMappings = mappings;
     }
 
     /**
@@ -92,8 +66,8 @@ public class LiferayIndex {
     @PostConstruct
     public final void initIndex() {
         try {
-            if (!esIndexApiService.isLiferayIndexExists(name)) {
-                esIndexApiService.createIndex(name, indexMappings, indexSettings);
+            if (!indexService.checkIfIndexExists(name)) {
+                indexService.createIndex(name, indexMappings, indexSettings);
             }
         } catch (ElasticsearchException configEx) {
             LOGGER.error("Error while connecting to Elasticsearch server:" + configEx.getMessage());

@@ -7,13 +7,12 @@ import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.util.StringPool;
-import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import fr.smile.liferay.elasticsearch.client.model.ElasticSearchJsonDocument;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -33,6 +32,11 @@ public class ElasticSearchJsonDocumentBuilder {
 
     /** The Constant LOGGER. */
     private static final Log LOGGER = LogFactoryUtil.getLog(ElasticSearchJsonDocumentBuilder.class);
+
+    /**
+     * Document type.
+     */
+    public static final String DOCUMENT_TYPE = "LiferayAssetType";
 
     /**
      * Exclude types.

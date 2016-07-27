@@ -24,9 +24,9 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
+import fr.smile.liferay.elasticsearch.client.ElasticSearchIndexerConstants;
+import fr.smile.liferay.elasticsearch.client.model.Index;
 import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
-import fr.smile.liferay.web.elasticsearch.model.index.LiferayIndex;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -75,7 +75,7 @@ public class EsSearchApiService {
      * Liferay index.
      */
     @Autowired
-    private LiferayIndex index;
+    private Index index;
 
     /**
      * Activate fuzzy search.
