@@ -1,10 +1,14 @@
 package fr.smile.liferay.web.elasticsearch;
 
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.PropsUtil;
 import fr.smile.liferay.elasticsearch.client.ConnexionSettings;
 import fr.smile.liferay.elasticsearch.client.ElasticSearchIndexerConstants;
 import fr.smile.liferay.elasticsearch.client.model.Index;
+import fr.smile.liferay.elasticsearch.client.service.IndexService;
 import org.elasticsearch.ElasticsearchException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -20,14 +24,14 @@ import java.nio.file.Paths;
 @Configuration
 public class ElasticsearchWebConfig {
 
+    /** The Constant LOGGER. */
+    private static final Log LOGGER = LogFactoryUtil.getLog(Index.class);
+
     /**
-     * Build connection settings bean.
-     * @return connection setting
+     * Index service.
      */
-    @Bean
-    public final ConnexionSettings connexionSettings() {
-        return new ConnexionSettings();
-    }
+    @Autowired
+    private IndexService indexService;
 
     /**
      * Build liferay index bean.
@@ -35,7 +39,7 @@ public class ElasticsearchWebConfig {
      * @throws IOException exception when reading mappings and settings files.
      */
     @Bean
-    public final Index liferayIndex() throws IOException {
+    public Index liferayIndex() throws IOException {
         String name = PropsUtil.get(ElasticSearchIndexerConstants.ES_KEY_INDEX);
 
         String settingsFilePath = PropsUtil.get(ElasticSearchIndexerConstants.ES_SETTINGS_PATH);
@@ -69,6 +73,15 @@ public class ElasticsearchWebConfig {
         String indexMappings = new String(Files.readAllBytes(Paths.get(mappingsFilePath)));
 
 
-        return new Index(name, indexSettings, indexMappings);
+        Index index = new Index(name, indexMappings, indexSettings);
+        try {
+            if (!indexService.checkIfIndexExists(name)) {
+                indexService.createIndex(index);
+            }
+        } catch (ElasticsearchException configEx) {
+            LOGGER.error("Error while connecting to Elasticsearch server:" + configEx.getMessage());
+        }
+
+        return index;
     }
 }

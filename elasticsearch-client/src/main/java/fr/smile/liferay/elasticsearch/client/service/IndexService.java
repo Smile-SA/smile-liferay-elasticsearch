@@ -73,15 +73,15 @@ public class IndexService {
      * Creates the liferay index in Elasticsearch server with default dynamic
      * mapping template.
      * @param index index
-     * @param mappings mappings
-     * @param settings settings
      */
-    public final void createIndex(final String index, final String mappings, final String settings) {
+    public final void createIndex(final Index index) {
         try {
-            CreateIndexRequestBuilder indexBuilder = client.admin().indices().prepareCreate(index);
+            CreateIndexRequestBuilder indexBuilder = client.admin().indices().prepareCreate(index.getName());
 
-            if (!StringUtils.isEmpty(mappings)) {
-                JSONObject jsonMappings = new JSONObject(mappings);
+            String indexMappings = index.getIndexMappings();
+            String indexSettings = index.getIndexMappings();
+            if (!StringUtils.isEmpty(indexMappings)) {
+                JSONObject jsonMappings = new JSONObject(indexMappings);
                 JSONArray jsonMappingsJSONArray = jsonMappings.getJSONArray("mappings");
                 for (int i = 0; i < jsonMappingsJSONArray.length(); i++) {
                     JSONObject obj = jsonMappingsJSONArray.getJSONObject(i);
@@ -91,8 +91,8 @@ public class IndexService {
                 }
             }
 
-            if (settings != null && settings.length() > 0) {
-                indexBuilder.setSettings(settings);
+            if (indexSettings != null && indexSettings.length() > 0) {
+                indexBuilder.setSettings(indexSettings);
             }
 
             CreateIndexResponse createIndexResponse = indexBuilder.execute().actionGet();

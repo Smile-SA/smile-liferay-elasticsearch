@@ -16,12 +16,6 @@ import javax.annotation.PostConstruct;
 public class Index {
 
     /**
-     * Index api service.
-     */
-    @Autowired
-    private IndexService indexService;
-
-    /**
      * Index name.
      */
     private String name;
@@ -41,9 +35,6 @@ public class Index {
      */
     private long totalHits;
 
-    /** The Constant LOGGER. */
-    private static final Log LOGGER = LogFactoryUtil.getLog(Index.class);
-
     /**
      * Default constructor.
      */
@@ -61,14 +52,6 @@ public class Index {
         this.name = name;
         this.indexSettings = settings;
         this.indexMappings = mappings;
-
-        try {
-            if (!indexService.checkIfIndexExists(name)) {
-                indexService.createIndex(name, indexMappings, indexSettings);
-            }
-        } catch (ElasticsearchException configEx) {
-            LOGGER.error("Error while connecting to Elasticsearch server:" + configEx.getMessage());
-        }
     }
 
     /**
