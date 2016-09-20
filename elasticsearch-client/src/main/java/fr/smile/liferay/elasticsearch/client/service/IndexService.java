@@ -9,10 +9,12 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
@@ -24,6 +26,9 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author marem
@@ -99,6 +104,29 @@ public class IndexService {
         } catch (Exception e) {
             LOGGER.error("Failed to load file for elasticsearch mapping settings", e);
         }
+    }
+
+    /**
+     * List indices.
+     * @return indices
+     */
+    public final List<Index> listIndices() {
+        List<Index> indices = new ArrayList<>();
+
+        IndicesAdminClient indicesAdminClient = client.admin().indices();
+        String[] esIndices = indicesAdminClient.getIndex(new GetIndexRequest())
+                .actionGet()
+                .getIndices();
+
+        for (String esIndex : esIndices) {
+            Index index = new Index();
+            SearchResponse response = client.prepareSearch(esIndex).setSize(0).get();
+            SearchHits hits = response.getHits();
+            index.setTotalHits(hits.getTotalHits());
+            indices.add(index);
+        }
+
+        return indices;
     }
 
     /**

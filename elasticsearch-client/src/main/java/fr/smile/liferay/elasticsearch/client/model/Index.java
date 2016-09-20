@@ -2,24 +2,17 @@ package fr.smile.liferay.elasticsearch.client.model;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
-import fr.smile.liferay.elasticsearch.client.ElasticSearchIndexerConstants;
 import fr.smile.liferay.elasticsearch.client.service.IndexService;
 import org.elasticsearch.ElasticsearchException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 /**
  * @author marem
  * @since 29/10/15.
  */
-@Service
 public class Index {
 
     /**
@@ -43,8 +36,20 @@ public class Index {
      */
     private String indexMappings;
 
+    /**
+     * Total hits.
+     */
+    private long totalHits;
+
     /** The Constant LOGGER. */
     private static final Log LOGGER = LogFactoryUtil.getLog(Index.class);
+
+    /**
+     * Default constructor.
+     */
+    public Index() {
+
+    }
 
     /**
      * Constructor.
@@ -56,6 +61,14 @@ public class Index {
         this.name = name;
         this.indexSettings = settings;
         this.indexMappings = mappings;
+
+        try {
+            if (!indexService.checkIfIndexExists(name)) {
+                indexService.createIndex(name, indexMappings, indexSettings);
+            }
+        } catch (ElasticsearchException configEx) {
+            LOGGER.error("Error while connecting to Elasticsearch server:" + configEx.getMessage());
+        }
     }
 
     /**
@@ -65,13 +78,6 @@ public class Index {
      */
     @PostConstruct
     public final void initIndex() {
-        try {
-            if (!indexService.checkIfIndexExists(name)) {
-                indexService.createIndex(name, indexMappings, indexSettings);
-            }
-        } catch (ElasticsearchException configEx) {
-            LOGGER.error("Error while connecting to Elasticsearch server:" + configEx.getMessage());
-        }
     }
 
     /**
@@ -120,5 +126,21 @@ public class Index {
      */
     public final void setIndexMappings(final String indexMappings) {
         this.indexMappings = indexMappings;
+    }
+
+    /**
+     * Get total hits.
+     * @return total hits
+     */
+    public final long getTotalHits() {
+        return totalHits;
+    }
+
+    /**
+     * Set total hits.
+     * @param totalHits total hits
+     */
+    public final void setTotalHits(final long totalHits) {
+        this.totalHits = totalHits;
     }
 }

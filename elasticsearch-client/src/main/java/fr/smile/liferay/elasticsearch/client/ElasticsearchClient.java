@@ -35,18 +35,15 @@ public class ElasticsearchClient {
      */
     public static final String ES_SETTING_CLIENT_SNIFF = "client.transport.sniff";
 
-    /** Es client connexion settings. */
-    @Autowired
-    private ConnexionSettings connexionSettings;
-
     /** Client. */
     private TransportClient client;
 
     /**
      * Create a new elasticsearch cluster client.
+     * @param connexionSettings connection settings
      * @throws UnknownHostException if host is unknown
      */
-    public ElasticsearchClient() throws UnknownHostException {
+    public ElasticsearchClient(final ConnexionSettings connexionSettings) throws UnknownHostException {
 
         /** Create a settings object with custom attributes and build */
         Settings.Builder settingsBuilder = Settings.settingsBuilder()

@@ -6,50 +6,46 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>
 
-<%--@elvariable id="index" type="java.util.List"--%>
+<%--@elvariable id="indices" type="lava.lang.String[]"--%>
 <portlet:defineObjects />
 <portlet:resourceURL var="resourceURL"/>
 
 <h2><liferay-ui:message key="list.job.scheduler" /></h2>
 
-    <table class="table table-striped table-bordered">
-        <thead>
+<table class="table table-striped table-bordered">
+    <thead>
+    <tr>
+        <td><liferay-ui:message key="index.name" /></td>
+        <td><liferay-ui:message key="index.type" /></td>
+        <td><liferay-ui:message key="index.totaldocuments" /></td>
+        <td><liferay-ui:message key="index.progression" /></td>
+        <td><liferay-ui:message key="index.actions" /></td>
+    </tr>
+    </thead>
+    <tbody>
+    <c:forEach items="${indices}" var="index">
         <tr>
-            <td><liferay-ui:message key="index.name" /></td>
-            <td><liferay-ui:message key="index.type" /></td>
-            <td><liferay-ui:message key="index.totaldocuments" /></td>
-            <td><liferay-ui:message key="index.last-call" /></td>
-            <td><liferay-ui:message key="index.progression" /></td>
-            <td><liferay-ui:message key="index.actions" /></td>
+            <td>${index.name}</td>
+            <td></td>
+            <td>${index.totalHits}</td>
+            <td>
+                <span class="processed-items"></span> / <span class="total-items"></span>
+            </td>
+            <td class="actions">
+                <div class="btn-group">
+                    <aui:button cssClass="btn btn-primary reindex" icon="icon-play" value="index.reindex" />
+                    <aui:button cssClass="btn btn-primary mappings" icon="icon-edit" value="index.mappings" />
+                    <aui:button cssClass="btn btn-primary settings" icon="icon-edit" value="index.settings" />
+                </div>
+            </td>
         </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>${index.name}</td>
-                <td>${index.type}</td>
-                <td>${index.type}</td>
-                <td>
-                </td>
-                <td>
-                    <span class="processed-items"></span> / <span class="total-items"></span>
-                </td>
-                <td class="actions">
-                    <div class="btn-group">
-                        <c:if test="${index.status != 'READY'}">
-                            <c:set var="runButtonCssClass" value="disabled"/>
-                        </c:if>
 
-                        <aui:button cssClass="btn btn-primary reindex ${runButtonCssClass}" icon="icon-play" value="index.reindex" />
-                    </div>
-                </td>
-            </tr>
-        </c:forEach>
-        </tbody>
-    </table>
+    </c:forEach>
+    </tbody>
+</table>
 
-    <script>
-        AUI().ready(function() {
-            Smile.BatchProcessingPortlet.init('${resourceURL}');
-        });
-    </script>
-</c:if>
+<script>
+    AUI().ready(function() {
+        Smile.ElasticsearchManagementPortlet.init('${resourceURL}');
+    });
+</script>
