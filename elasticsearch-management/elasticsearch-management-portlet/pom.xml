@@ -18,14 +18,6 @@
 				<groupId>com.liferay.maven.plugins</groupId>
 				<artifactId>liferay-maven-plugin</artifactId>
 				<version>${liferay.maven.plugin.version}</version>
-				<executions>
-					<execution>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>build-css</goal>
-						</goals>
-					</execution>
-				</executions>
 				<configuration>
 					<apiBaseDir>${basedir}/../elasticsearch-management-portlet-service</apiBaseDir>
 				</configuration>
@@ -86,5 +78,11 @@
             <artifactId>jstl</artifactId>
             <version>1.2</version>
         </dependency>
+
+		<dependency>
+			<groupId>fr.smile.liferay.elasticsearch</groupId>
+			<artifactId>elasticsearch-client</artifactId>
+			<version>${project.version}</version>
+		</dependency>
 	</dependencies>
 </project>

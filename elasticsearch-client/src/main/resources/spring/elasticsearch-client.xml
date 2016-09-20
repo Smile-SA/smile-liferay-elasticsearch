@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<beans default-destroy-method="destroy" default-init-method="afterPropertiesSet"
+       xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                            http://www.springframework.org/schema/context
+                            http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+
+    <!-- Auto scan the components -->
+    <context:component-scan base-package="fr.smile.liferay" />
+
+    <bean id="connexionSettings" class="fr.smile.liferay.elasticsearch.client.ConnexionSettings"/>
+    <bean id="clientFactory" class="fr.smile.liferay.elasticsearch.client.ElasticsearchClient">
+        <constructor-arg name="connexionSettings" ref="connexionSettings"/>
+    </bean>
+    <bean id="client" factory-bean="clientFactory" factory-method="getClient"/>
+    <bean id="indexService" class="fr.smile.liferay.elasticsearch.client.service.IndexService"/>
+
+</beans>

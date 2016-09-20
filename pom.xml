@@ -28,6 +28,7 @@
         <module>smile-liferay-elasticsearch-web</module>
         <module>elasticsearch-management</module>
         <module>smile-liferay-search-hook</module>
+        <module>elasticsearch-client</module>
     </modules>
 
     <developers>
@@ -115,7 +116,6 @@
             <artifactId>elasticsearch</artifactId>
             <version>2.1.0</version>
         </dependency>
-
 	</dependencies>
 
     <repositories>

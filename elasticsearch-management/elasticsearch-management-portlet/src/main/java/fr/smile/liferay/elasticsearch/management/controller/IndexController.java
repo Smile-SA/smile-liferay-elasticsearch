@@ -1,17 +1,17 @@
 package fr.smile.liferay.elasticsearch.management.controller;
 
-import com.liferay.portal.kernel.exception.SystemException;
-import com.liferay.portal.kernel.search.Indexer;
-import com.liferay.portal.kernel.util.ListUtil;
-import com.liferay.portal.model.Portlet;
-import com.liferay.portal.service.PortletLocalServiceUtil;
-import com.liferay.portal.util.PortalUtil;
-import com.liferay.portal.util.comparator.PortletLuceneComparator;
 import com.liferay.util.bridges.mvc.MVCPortlet;
+import fr.smile.liferay.elasticsearch.client.model.Index;
+import fr.smile.liferay.elasticsearch.client.service.IndexService;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.ContextLoader;
 
-import javax.portlet.*;
+import javax.portlet.PortletException;
+import javax.portlet.RenderRequest;
+import javax.portlet.RenderResponse;
+import javax.portlet.ResourceRequest;
+import javax.portlet.ResourceResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,11 +20,17 @@ import java.util.List;
  */
 public class IndexController extends MVCPortlet {
 
+    /**
+     * Index service.
+     */
+    private IndexService indexService;
+
     @Override
     public final void doView(final RenderRequest renderRequest, final RenderResponse renderResponse)
             throws IOException, PortletException {
-        long companyId = PortalUtil.getCompanyId(renderRequest);
-        renderRequest.setAttribute("indexingPortlets", this.getIndexingPortlets(companyId));
+
+        List<Index> indices = getIndexService().listIndices();
+        renderRequest.setAttribute("indices", indices);
         super.doView(renderRequest, renderResponse);
     }
 
@@ -35,36 +41,15 @@ public class IndexController extends MVCPortlet {
     }
 
     /**
-     * Get list of portlets that reindex contents.
-     * @param companyId company id
-     * @return list
+     * Get index service.
+     * @return index service
      */
-    private List<Portlet> getIndexingPortlets(final long companyId) {
-
-        List<Portlet> indexingPortlets = new ArrayList<Portlet>();
-        List<Portlet> portlets;
-        try {
-            portlets = PortletLocalServiceUtil.getPortlets(companyId);
-        } catch (SystemException e) {
-            return indexingPortlets;
+    private IndexService getIndexService() {
+        if (indexService == null) {
+            ApplicationContext context = ContextLoader.getCurrentWebApplicationContext();
+            indexService = (IndexService) context.getBean("indexService");
         }
 
-        portlets = ListUtil.sort(portlets, new PortletLuceneComparator());
-
-        for (Portlet portlet : portlets) {
-            if (!portlet.isActive()) {
-                continue;
-            }
-
-            List<Indexer> indexers = portlet.getIndexerInstances();
-
-            if (indexers == null) {
-                continue;
-            }
-
-            indexingPortlets.add(portlet);
-        }
-
-        return indexingPortlets;
+        return indexService;
     }
 }

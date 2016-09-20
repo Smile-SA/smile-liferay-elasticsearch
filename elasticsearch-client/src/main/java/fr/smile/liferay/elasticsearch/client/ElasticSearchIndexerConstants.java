@@ -1,4 +1,4 @@
-package fr.smile.liferay.web.elasticsearch.util;
+package fr.smile.liferay.elasticsearch.client;
 
 /**
  * @author marem
