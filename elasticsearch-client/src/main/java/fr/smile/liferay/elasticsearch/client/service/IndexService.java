@@ -79,7 +79,7 @@ public class IndexService {
             CreateIndexRequestBuilder indexBuilder = client.admin().indices().prepareCreate(index.getName());
 
             String indexMappings = index.getIndexMappings();
-            String indexSettings = index.getIndexMappings();
+            String indexSettings = index.getIndexSettings();
             if (!StringUtils.isEmpty(indexMappings)) {
                 JSONObject jsonMappings = new JSONObject(indexMappings);
                 JSONArray jsonMappingsJSONArray = jsonMappings.getJSONArray("mappings");
