@@ -72,8 +72,7 @@ public class ElasticsearchWebConfig {
         String indexSettings = new String(Files.readAllBytes(Paths.get(settingsFilePath)));
         String indexMappings = new String(Files.readAllBytes(Paths.get(mappingsFilePath)));
 
-
-        Index index = new Index(name, indexMappings, indexSettings);
+        Index index = new Index(name, indexSettings, indexMappings);
         try {
             if (!indexService.checkIfIndexExists(name)) {
                 indexService.createIndex(index);
