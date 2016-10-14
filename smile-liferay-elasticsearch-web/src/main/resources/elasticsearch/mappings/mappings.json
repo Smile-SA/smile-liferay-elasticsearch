@@ -5,7 +5,7 @@
         "properties": {
           "title": {
             "type": "string",
-            "index": "not_analyzed"
+            "index": "analyzed"
           },
           "title_fr_FR": {
             "type": "string",
