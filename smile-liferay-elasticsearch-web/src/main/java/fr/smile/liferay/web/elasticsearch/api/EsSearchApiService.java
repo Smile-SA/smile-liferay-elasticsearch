@@ -21,10 +21,8 @@ import com.liferay.portal.kernel.search.facet.RangeFacet;
 import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
 import com.liferay.portal.kernel.search.facet.config.FacetConfiguration;
 import com.liferay.portal.kernel.util.ArrayUtil;
-import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
-import fr.smile.liferay.elasticsearch.client.ElasticSearchIndexerConstants;
 import fr.smile.liferay.elasticsearch.client.model.Index;
 import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
 import org.elasticsearch.action.search.SearchRequestBuilder;
@@ -78,15 +76,9 @@ public class EsSearchApiService {
     private Index index;
 
     /**
-     * Activate fuzzy search.
-     */
-    private boolean isFuzzyEnabled = false;
-
-    /**
      * Constructor.
      */
     public EsSearchApiService() {
-        isFuzzyEnabled = Boolean.parseBoolean(PropsUtil.get(ElasticSearchIndexerConstants.ES_FUZZY_ENABLED));
     }
 
     /**
@@ -146,10 +138,6 @@ public class EsSearchApiService {
      */
     public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
         String queryString = escape(query.toString());
-
-        if (isFuzzyEnabled) {
-            queryString = replaceKeywords(queryString, searchContext.getKeywords());
-        }
         queryString = escapeCustomFields(queryString);
 
         QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
@@ -527,39 +515,5 @@ public class EsSearchApiService {
         }
 
         return esTermFacetResultMap;
-    }
-
-    /**
-     * Replace keywords.
-     * @param inputQueryString query string
-     * @param inputKeywords keywords
-     * @return replaced keywords
-     */
-    private String replaceKeywords(final String inputQueryString, final String inputKeywords) {
-        // Remove the double quotes from searchContext keywords
-        String keywords = inputKeywords.replaceAll("\"", "");
-        String[] listTerms = keywords.split(" ");
-        String newKeywords = "";
-
-        // If only one keyword, use of Fuzzy
-        if (listTerms.length == 1) {
-            newKeywords += listTerms[0] + "~2";
-
-            // If more than one keywords, use of field grouping
-        } else {
-            newKeywords += "(";
-            for (int i = 0; i < listTerms.length; i++) {
-                newKeywords += "+" + listTerms[i];
-                if (i != listTerms.length - 1) {
-                    newKeywords += " ";
-                }
-            }
-            newKeywords += ")";
-        }
-
-        // Modify the query to use Fuzzy or Field Grouping
-        return inputQueryString.replaceAll("\\*", "")
-                .replaceAll(":\"" + keywords + "\"", ":" + keywords)
-                .replaceAll(":" + keywords, ":" + newKeywords);
     }
 }
