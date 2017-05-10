@@ -6,6 +6,7 @@ import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.search.Document;
 import com.liferay.portal.kernel.search.Field;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import fr.smile.liferay.elasticsearch.client.model.ElasticSearchJsonDocument;
@@ -20,12 +21,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * @author marem
- * @since 30/10/15.
+ * {@link ElasticSearchJsonDocument} creation service.
  */
 @Service
 public class ElasticSearchJsonDocumentBuilder {
@@ -53,7 +54,7 @@ public class ElasticSearchJsonDocumentBuilder {
     @PostConstruct
     public final void loadExcludedTypes() {
         if (Validator.isNotNull(excludedTypesProperty)) {
-            excludedTypes = new HashSet<String>();
+            excludedTypes = new HashSet<>();
             String[] excludedTypesArray = excludedTypesProperty.split(StringPool.COMMA);
             for (String excludedType : Arrays.asList(excludedTypesArray)) {
                 excludedTypes.add(excludedType);
@@ -65,6 +66,112 @@ public class ElasticSearchJsonDocumentBuilder {
     }
 
     /**
+     * Suffix a string with a "_sortable" string.
+     * @param str the string to concat with the suffix
+     * @return the string suffixed
+     */
+    private String suffixWithSortable(String str) {
+        return str + StringPool.UNDERLINE + "sortable";
+    }
+
+    /**
+     * Suffix a string with a locale string format.
+     * @param str the string to concat
+     * @param locale the locale
+     * @return the string localized
+     */
+    private String localized(String str, Locale locale) {
+        return str + StringPool.UNDERLINE + locale.toString();
+    }
+
+    /**
+     * Fill content builder with a field.
+     * @param contentBuilder the content builder
+     * @param field the field
+     * @param name the field name
+     * @throws IOException any io exception that could happen in treatment
+     */
+    private void buildField(XContentBuilder contentBuilder, Field field, String name) throws IOException {
+        if (field.isLocalized()) {
+            buildLocalizedField(contentBuilder, field, name);
+        } else {
+            buildSimpleField(contentBuilder, field, name);
+        }
+    }
+
+    /**
+     * Fill content builder with a localized field.
+     * @param contentBuilder the content builder
+     * @param field the field
+     * @param name the field name
+     * @throws IOException any io exception that could happen in treatment
+     */
+    private void buildLocalizedField(XContentBuilder contentBuilder, Field field, String name) throws IOException {
+        Map<Locale, String> fieldValues = field.getLocalizedValues();
+
+        Locale locale;
+        String value;
+        boolean sortable;
+        for (Map.Entry<Locale, String> localeEntry : fieldValues.entrySet()) {
+            locale = localeEntry.getKey();
+            value = localeEntry.getValue();
+            sortable = field.isSortable();
+
+            String languageId = LocaleUtil.toLanguageId(locale);
+            String defaultLanguageId = LocaleUtil.toLanguageId(LocaleUtil.getDefault());
+
+            if (languageId.equals(defaultLanguageId)) {
+                contentBuilder.field(name, value);
+            }
+
+            if (sortable) {
+                contentBuilder.field(suffixWithSortable(name), value);
+            }
+
+            if (value != null && !value.isEmpty()) {
+                contentBuilder.field(localized(name, locale), value);
+
+                if (sortable) {
+                    contentBuilder.field(suffixWithSortable(localized(name, locale)), value);
+                }
+            }
+        }
+    }
+
+    /**
+     * Fill content builder with a simple field (not localized).
+     * @param contentBuilder the content builder
+     * @param field the field
+     * @param name the field name
+     * @throws IOException any io exception that could happen in treatment
+     */
+    private void buildSimpleField(XContentBuilder contentBuilder, Field field, String name) throws IOException {
+        String[] fieldValues = field.getValues();
+        Collection<String> values = null;
+
+        if (fieldValues != null && fieldValues.length > 1) {
+            List<String> tempList = Arrays.asList(fieldValues);
+
+            Predicate<String> isNotEmptyElementPredicate = new Predicate<String>() {
+                public boolean apply(final String p) {
+                    return p.trim().length() > 0;
+                }
+            };
+
+            values = Collections2.filter(tempList, isNotEmptyElementPredicate);
+        }
+
+        if (values != null && values.size() > 0) {
+            contentBuilder.array(name, values.toArray());
+        } else {
+            String value = field.getValue();
+            if (value != null) {
+                contentBuilder.field(name, value.trim());
+            }
+        }
+    }
+
+    /**
      * Convert to json.
      *
      * @param document
@@ -72,50 +179,24 @@ public class ElasticSearchJsonDocumentBuilder {
      * @return the string
      */
     public final ElasticSearchJsonDocument convertToJSON(final Document document) {
-
-
         ElasticSearchJsonDocument elasticsearchJSONDocument = new ElasticSearchJsonDocument();
-        try {
-            XContentBuilder contentBuilder = XContentFactory.jsonBuilder().startObject();
 
-            if (!isValid(document, elasticsearchJSONDocument)) {
-                return elasticsearchJSONDocument;
-            }
+        if (isValid(document, elasticsearchJSONDocument)) {
+            try {
+                XContentBuilder contentBuilder = XContentFactory.jsonBuilder().startObject();
 
-            /** Create a JSON string for remaining fields of document */
-            Map<String, Field> fields = document.getFields();
-            for (Map.Entry<String, Field> entry :  fields.entrySet()) {
-                Field field = entry.getValue();
-
-                Collection<String> values = null;
-                if (field.getValues() != null && field.getValues().length > 1) {
-                    List<String> tempList = Arrays.asList(field.getValues());
-
-                    Predicate<String> isNotEmptyElementPredicate = new Predicate<String>() {
-                        public boolean apply(final String p) {
-                            String value = p.trim();
-                            return !"".equals(value);
-                        }
-                    };
-
-                    values = Collections2.filter(tempList, isNotEmptyElementPredicate);
+                /** Create a JSON string for remaining fields of document */
+                Map<String, Field> fields = document.getFields();
+                for (Map.Entry<String, Field> entry :  fields.entrySet()) {
+                    buildField(contentBuilder, entry.getValue(), entry.getKey());
                 }
+                contentBuilder.endObject();
 
-                if (values != null && values.size() > 0) {
-                    contentBuilder.array(entry.getKey(), values.toArray());
-                } else {
-                    String value = field.getValue();
-                    if (value != null) {
-                        contentBuilder.field(entry.getKey(), value.trim());
-                    }
-                }
+                elasticsearchJSONDocument.setJsonDocument(contentBuilder.string());
+                LOGGER.debug("Liferay Document converted to ESJSON document successfully:" + contentBuilder.string());
+            } catch (IOException e) {
+                LOGGER.error("IO Error during converstion of Liferay Document to JSON format" + e.getMessage());
             }
-            contentBuilder.endObject();
-
-            elasticsearchJSONDocument.setJsonDocument(contentBuilder.string());
-            LOGGER.debug("Liferay Document converted to ESJSON document successfully:" + contentBuilder.string());
-        } catch (IOException e) {
-            LOGGER.error("IO Error during converstion of Liferay Document to JSON format" + e.getMessage());
         }
         return elasticsearchJSONDocument;
     }
@@ -193,11 +274,10 @@ public class ElasticSearchJsonDocumentBuilder {
      */
     private boolean isDocumentHidden(final Document document) {
         Field hiddenField = document.getFields().get(Field.HIDDEN);
-        boolean hiddenFlag = false;
         if (hiddenField != null) {
-            hiddenFlag = Boolean.getBoolean(hiddenField.getValue());
+            return Boolean.getBoolean(hiddenField.getValue());
         }
-        return hiddenFlag;
+        return false;
     }
 
     /**

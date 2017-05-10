@@ -1,8 +1,13 @@
 package fr.smile.liferay.elasticsearch.client.service;
 
+import org.springframework.stereotype.Service;
+
 /**
- * @author marem
- * @since 27/07/16.
+ * This service allows search methods through the index.
  */
+@Service
 public class SearchService {
+
+    // Todo
+
 }

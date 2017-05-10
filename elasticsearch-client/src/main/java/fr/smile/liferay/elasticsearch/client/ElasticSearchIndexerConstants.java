@@ -1,8 +1,7 @@
 package fr.smile.liferay.elasticsearch.client;
 
 /**
- * @author marem
- * @since 29/10/15.
+ * Some constants to configure ElasticSearch with Liferay server.
  */
 public final class ElasticSearchIndexerConstants {
 

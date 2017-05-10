@@ -1,8 +1,7 @@
 package fr.smile.liferay.elasticsearch.client.model;
 
 /**
- * @author marem
- * @since 30/10/15.
+ * Represents a document stored in the index, in JSON format.
  */
 public class ElasticSearchJsonDocument {
     /**
@@ -10,7 +9,7 @@ public class ElasticSearchJsonDocument {
      */
     public enum DocumentError {
 
-        /** The missing classpk. */
+        /** The hidden type. */
         HIDDEN_DOCUMENT("liferay document is of hidden type"),
 
         /** The missing classpk. */
@@ -23,14 +22,14 @@ public class ElasticSearchJsonDocument {
         EXCLUDED_TYPE("this type is not supported at this time");
 
         /** The error msg. */
-        private String errorMsg;
+        private final String errorMsg;
 
         /**
          * Instantiates a new document error.
          *
          * @param value the value
          */
-        private DocumentError(final String value) {
+        DocumentError(final String value) {
             this.errorMsg = value;
         }
 
