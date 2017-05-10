@@ -6,7 +6,14 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.search.*;
+import com.liferay.portal.kernel.search.Document;
+import com.liferay.portal.kernel.search.DocumentImpl;
+import com.liferay.portal.kernel.search.Field;
+import com.liferay.portal.kernel.search.Hits;
+import com.liferay.portal.kernel.search.HitsImpl;
+import com.liferay.portal.kernel.search.Query;
+import com.liferay.portal.kernel.search.SearchContext;
+import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.search.facet.AssetEntriesFacet;
 import com.liferay.portal.kernel.search.facet.Facet;
 import com.liferay.portal.kernel.search.facet.MultiValueFacet;
@@ -16,9 +23,8 @@ import com.liferay.portal.kernel.search.facet.config.FacetConfiguration;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
+import fr.smile.liferay.elasticsearch.client.model.Index;
 import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
-import fr.smile.liferay.web.elasticsearch.model.index.LiferayIndex;
-import fr.smile.liferay.web.elasticsearch.util.ElasticSearchIndexerConstants;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -38,7 +44,16 @@ import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author marem
@@ -54,15 +69,47 @@ public class EsSearchApiService {
     @Autowired
     private Client client;
 
+    /**
+     * Liferay index.
+     */
     @Autowired
-    private LiferayIndex index;
+    private Index index;
 
+    /**
+     * Constructor.
+     */
+    public EsSearchApiService() {
+    }
+
+    /**
+     * To.
+     */
     public static final String ELASTIC_SEARCH_TO = "TO";
+
+    /**
+     * Values.
+     */
     public static final String ELASTIC_SEARCH_VALUES = "values";
+
+    /**
+     * Ranges.
+     */
     public static final String ELASTIC_SEARCH_RANGES = "ranges";
+
+    /**
+     * Range.
+     */
     public static final String ELASTIC_SEARCH_RANGE = "range";
+
+    /**
+     * Max terms.
+     */
     public static final String ELASTIC_SEARCH_MAXTERMS = "maxTerms";
-    public static final String ELASTIC_SEARCH_INNERFIELD_MDATE = "modified.modified_date";
+
+    /**
+     * Modified.
+     */
+    public static final String ELASTIC_SEARCH_INNERFIELD_MDATE = "modified";
 
     /**
      * Gets the search hits.
@@ -74,8 +121,6 @@ public class EsSearchApiService {
      * @return the search hits
      */
     public final Hits getSearchHits(final Query query, final Sort[] sort, final int start, final int end) {
-        LOGGER.info("Search against Elasticsearch with query, sort, start and end parameters");
-
         SearchContext searchContext = new SearchContext();
         searchContext.setStart(start);
         searchContext.setEnd(end);
@@ -92,33 +137,9 @@ public class EsSearchApiService {
      * @return the search hits
      */
     public final Hits getSearchHits(final SearchContext searchContext, final Query query) {
-        LOGGER.info("Search against Elasticsearch with SearchContext");
         String queryString = escape(query.toString());
+        queryString = escapeCustomFields(queryString);
 
-        // Remove the double quotes from searchContext keywords
-        String keywords = searchContext.getKeywords().replaceAll("\"","");
-        System.out.println("Before : " + queryString);
-        String[] listTerms = keywords.split(" ");
-        String newKeywords = "";
-
-        // If only one keyword, use of Fuzzy
-        if(listTerms.length == 1){
-            newKeywords += listTerms[0] + "~2";
-
-        // If more than one keywords, use of field grouping
-        } else {
-            newKeywords += "(";
-            for(int i = 0; i < listTerms.length; i++) {
-                newKeywords += "+" + listTerms[i];
-                if (i != listTerms.length - 1) {
-                    newKeywords += " ";
-                }
-            }
-            newKeywords += ")";
-        }
-        // Modify the query to use Fuzzy or Field Grouping
-        queryString = queryString.replaceAll("\\*","").replaceAll(":\"" + keywords + "\"",":" + keywords).replaceAll(":" + keywords, ":" + newKeywords);
-        System.out.println("After : " + queryString);
         QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(queryString);
         SearchRequestBuilder searchRequestBuilder = client.prepareSearch(
                 index.getName()
@@ -129,10 +150,14 @@ public class EsSearchApiService {
             handleFacetQueries(searchContext.getFacets(), searchRequestBuilder);
         }
 
-        if (getSort(searchContext.getSorts()) != null) {
+        if (searchContext.getSorts() != null && searchContext.getSorts().length > 0) {
             searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
-                    .setSize(searchContext.getEnd())
-                    .addSort(getSort(searchContext.getSorts()));
+                    .setSize(searchContext.getEnd());
+            for (Sort sort : searchContext.getSorts()) {
+                if (sort != null && sort.getFieldName() != null) {
+                    searchRequestBuilder.addSort(getSort(sort));
+                }
+            }
         } else {
             searchRequestBuilder = searchRequestBuilder.setFrom(searchContext.getStart())
                     .setSize(searchContext.getEnd());
@@ -168,26 +193,18 @@ public class EsSearchApiService {
 
     /**
      * get SortBuilder based on sort array sent by Liferay.
-     * @param sorts sorts
+     * @param sort sort
      * @return sort builder
      */
-    private SortBuilder getSort(final Sort[] sorts) {
-        SortBuilder sortBuilder = null;
-        if (sorts != null) {
-            for (Sort sort : sorts) {
-                if (sort != null && sort.getFieldName() != null) {
-                    SortOrder sortOrder = SortOrder.ASC;
-                    if (sort.isReverse()) {
-                        sortOrder = SortOrder.DESC;
-                    }
-                    sortBuilder = SortBuilders.fieldSort(sort.getFieldName())
-                            .ignoreUnmapped(true)
-                            .order(sortOrder);
-                }
-            }
+    private SortBuilder getSort(final Sort sort) {
+        SortOrder sortOrder = SortOrder.ASC;
+        if (sort.isReverse()) {
+            sortOrder = SortOrder.DESC;
         }
 
-        return sortBuilder;
+        return SortBuilders.fieldSort(sort.getFieldName())
+                .ignoreUnmapped(true)
+                .order(sortOrder);
     }
 
     /**
@@ -213,12 +230,10 @@ public class EsSearchApiService {
      * @return the documents
      */
     private Document[] getDocuments(final SearchHits searchHits, final SearchContext searchContext) {
-        LOGGER.info("Getting document objects from SearchHits");
-
         String[] types = searchContext.getEntryClassNames();
         if (searchHits != null && searchHits.getTotalHits() > 0) {
             int failedJsonCount = 0;
-            List<Document> documentsList = new ArrayList<Document>();
+            List<Document> documentsList = new ArrayList<>();
             for (SearchHit hit : searchHits.getHits()) {
                 Document document = new DocumentImpl();
                 try {
@@ -264,19 +279,23 @@ public class EsSearchApiService {
                 FacetConfiguration liferayFacetConfiguration = facet.getFacetConfiguration();
                 JSONObject liferayFacetDataJSONObject = liferayFacetConfiguration.getData();
                 if (facet instanceof MultiValueFacet) {
-                    TermsBuilder termsFacetBuilder = AggregationBuilders.terms(liferayFacetConfiguration.getFieldName());
+                    TermsBuilder termsFacetBuilder = AggregationBuilders.terms(
+                        liferayFacetConfiguration.getFieldName()
+                    );
                     termsFacetBuilder.field(liferayFacetConfiguration.getFieldName());
                     if (liferayFacetDataJSONObject.has(ELASTIC_SEARCH_MAXTERMS)) {
                         termsFacetBuilder.size(liferayFacetDataJSONObject.getInt(ELASTIC_SEARCH_MAXTERMS));
                     }
                     searchRequestBuilder.addAggregation(termsFacetBuilder);
                 } else if (facet instanceof RangeFacet) {
-                    RangeBuilder rangeFacetBuilder = AggregationBuilders.range(liferayFacetConfiguration.getFieldName());
+                    RangeBuilder rangeFacetBuilder = AggregationBuilders.range(
+                        liferayFacetConfiguration.getFieldName()
+                    );
 
                     /**
                      *A typical ranges array looks like below.
-                     *[{"range":"[20140603200000 TO 20140603220000]","label":"past-hour"},{"range":"[20140602210000 TO 20140603220000]","label":"past-24-hours"},...]
-                     *
+                     *[{"range":"[20140603200000 TO 20140603220000]","label":"past-hour"},
+                     * {"range":"[20140602210000 TO 20140603220000]","label":"past-24-hours"},...]
                      */
                     JSONArray rangesJSONArray = liferayFacetDataJSONObject.getJSONArray(ELASTIC_SEARCH_RANGES);
                     rangeFacetBuilder.field(ELASTIC_SEARCH_INNERFIELD_MDATE);
@@ -285,7 +304,10 @@ public class EsSearchApiService {
                             JSONObject rangeJSONObject = rangesJSONArray.getJSONObject(i);
                             String[] fromTovalues = fetchFromToValuesInRage(rangeJSONObject);
                             if (fromTovalues != null) {
-                                rangeFacetBuilder.addRange(Double.parseDouble(fromTovalues[0].trim()), Double.parseDouble(fromTovalues[1].trim()));
+                                rangeFacetBuilder.addRange(
+                                        Double.parseDouble(fromTovalues[0].trim()),
+                                        Double.parseDouble(fromTovalues[1].trim())
+                                );
                             }
                         }
                     }
@@ -308,7 +330,6 @@ public class EsSearchApiService {
             if (!liferayFacet.isStatic()) {
                 Aggregation esFacet = response.getAggregations().get(facetEntry.getKey());
                 if (esFacet != null) {
-                    FacetCollector facetCollector = null;
                     Map<String, Integer> facetResults = null;
 
                     /**
@@ -325,7 +346,7 @@ public class EsSearchApiService {
                             LOGGER.debug("Handling AssetEntriesFacet now for field:" + facetEntry.getKey() + "...");
                         }
                         Map<String, Integer> esTermsFacetResults = parseESFacet(esFacet);
-                        facetResults = new HashMap<String, Integer>();
+                        facetResults = new HashMap<>();
 
                         for (String entryClassname : fetchEntryClassnames(liferayFacet)) {
 
@@ -342,7 +363,7 @@ public class EsSearchApiService {
                         }
 
                     } else if ((liferayFacet instanceof MultiValueFacet)) {
-                        facetResults = new HashMap<String, Integer>();
+                        facetResults = new HashMap<>();
                         Terms esTermsFacetResults = (Terms) esFacet;
                         Collection<Terms.Bucket> buckets = esTermsFacetResults.getBuckets();
                         for (Terms.Bucket bucket : buckets) {
@@ -355,7 +376,7 @@ public class EsSearchApiService {
                         }
                     } else if ((liferayFacet instanceof RangeFacet)) {
                         Range esRange = (Range) esFacet;
-                        facetResults = new HashMap<String, Integer>();
+                        facetResults = new HashMap<>();
                         for (Range.Bucket entry : esRange.getBuckets()) {
                             facetResults.put(buildRangeTerm(entry), (int) entry.getDocCount());
                             if (LOGGER.isDebugEnabled()) {
@@ -366,7 +387,10 @@ public class EsSearchApiService {
                         }
                     }
 
-                    facetCollector = new ElasticSearchQueryFacetCollector(facetEntry.getKey(), facetResults);
+                    FacetCollector facetCollector = new ElasticSearchQueryFacetCollector(
+                        facetEntry.getKey(),
+                        facetResults
+                    );
                     liferayFacet.setFacetCollector(facetCollector);
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("Facet collector successfully set for field:" + facetEntry.getKey() + "...");
@@ -384,15 +408,21 @@ public class EsSearchApiService {
      * @return the string
      */
     private String buildRangeTerm(final Range.Bucket entry) {
-        StringBuilder termBuilder = new StringBuilder();
-        termBuilder.append(StringPool.OPEN_BRACKET);
-        termBuilder.append(entry.getFromAsString());
-        termBuilder.append(StringPool.SPACE);
-        termBuilder.append(ELASTIC_SEARCH_TO);
-        termBuilder.append(StringPool.SPACE);
-        termBuilder.append(entry.getToAsString());
-        termBuilder.append(StringPool.CLOSE_BRACKET);
-        return termBuilder.toString();
+        // Try to convert to long
+        try {
+            long from = (long) ((double) entry.getFrom());
+            long to = (long) ((double) entry.getTo());
+            return StringPool.OPEN_BRACKET + from
+                    + StringPool.SPACE + ELASTIC_SEARCH_TO
+                    + StringPool.SPACE + to
+                    + StringPool.CLOSE_BRACKET;
+        } catch (NumberFormatException e) {
+            // If from or to can't be casted to long return string value
+            return StringPool.OPEN_BRACKET + entry.getFromAsString()
+                    + StringPool.SPACE + ELASTIC_SEARCH_TO
+                    + StringPool.SPACE + entry.getToAsString()
+                    + StringPool.CLOSE_BRACKET;
+        }
     }
 
     /**
@@ -404,7 +434,7 @@ public class EsSearchApiService {
     private Set<String> fetchEntryClassnames(final Facet liferayFacet) {
         JSONObject dataJSONObject = liferayFacet.getFacetConfiguration().getData();
         JSONArray valuesArray = dataJSONObject.getJSONArray(ELASTIC_SEARCH_VALUES);
-        Set<String> entryClassnames = new HashSet<String>();
+        Set<String> entryClassnames = new HashSet<>();
         if (valuesArray != null) {
             for (int z = 0; z < valuesArray.length(); z++) {
                 entryClassnames.add(valuesArray.getString(z));
@@ -429,7 +459,7 @@ public class EsSearchApiService {
     }
 
     /**
-     * Escape query
+     * Escape query.
      * @param s strig query to escape
      * @return query escaped
      */
@@ -449,6 +479,28 @@ public class EsSearchApiService {
     }
 
     /**
+     * Escape custom field string value.
+     * @param s string
+     * @return escaped custom field string value
+     */
+    public static String escapeCustomFields(final String s) {
+        String escapedCustomFieldValue = s;
+        Matcher m = Pattern.compile("custom_fields[A-Za-z\\\\/]*?\\s.*?:").matcher(escapedCustomFieldValue);
+        int offset = 0;
+        while (m.find()) {
+            int start = m.start() + offset;
+            int end = m.end() + offset;
+            String substring = escapedCustomFieldValue.substring(start, end);
+            String startString = escapedCustomFieldValue.substring(0, start);
+            String endString = escapedCustomFieldValue.substring(end, escapedCustomFieldValue.length());
+            String middleString = substring.replaceAll(" ", "\\\\ ");
+            offset += middleString.length() - substring.length();
+            escapedCustomFieldValue = startString + middleString + endString;
+        }
+        return escapedCustomFieldValue;
+    }
+
+    /**
      * Parses the es facet to return a map with Entryclassname and its count.
      *
      * @param esFacet the es facet
@@ -457,9 +509,9 @@ public class EsSearchApiService {
     private Map<String, Integer> parseESFacet(final Aggregation esFacet) {
         Terms terms = (Terms) esFacet;
         Collection<Terms.Bucket> buckets = terms.getBuckets();
-        Map<String, Integer> esTermFacetResultMap = new HashMap<String, Integer>();
+        Map<String, Integer> esTermFacetResultMap = new HashMap<>();
         for (Terms.Bucket bucket : buckets) {
-            esTermFacetResultMap.put(bucket.getKeyAsString(), (int) bucket.getDocCount());
+            esTermFacetResultMap.put(bucket.getKeyAsString().toLowerCase(), (int) bucket.getDocCount());
         }
 
         return esTermFacetResultMap;

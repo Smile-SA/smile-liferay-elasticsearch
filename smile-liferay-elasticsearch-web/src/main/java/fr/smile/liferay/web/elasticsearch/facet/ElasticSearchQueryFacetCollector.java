@@ -2,11 +2,12 @@ package fr.smile.liferay.web.elasticsearch.facet;
 
 import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
 import com.liferay.portal.kernel.search.facet.collector.TermCollector;
+import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
+import com.liferay.portal.kernel.util.StringPool;
+import fr.smile.liferay.web.elasticsearch.api.EsSearchApiService;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.DateFormat;
+import java.util.*;
 
 /**
  * @author marem
@@ -26,7 +27,6 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
         for (Map.Entry<String, Integer> entry : facetResults.entrySet()) {
             String term = entry.getKey();
             Integer count = entry.getValue();
-
             this.counts.put(term, count);
         }
     }
@@ -43,7 +43,12 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
         if (this.counts.get(term) != null) {
             count = this.counts.get(term);
         }
-
+        else {
+            String normalizeLabel = normalizeRangeLabel(term);
+            if (!normalizeLabel.equals(term)) {
+                count = this.counts.get(normalizeLabel);
+            }
+        }
         return new ElasticSearchDefaultTermCollector(term, count);
     }
 
@@ -64,6 +69,43 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
         this.termCollectors = termCollectors;
 
         return this.termCollectors;
+    }
+
+    private String normalizeRangeLabel(String dateLabel) {
+
+        Calendar now = Calendar.getInstance();
+
+        now.set(Calendar.SECOND, 0);
+        now.set(Calendar.MINUTE, 0);
+
+        Calendar date = (Calendar)now.clone();
+
+        switch (dateLabel) {
+            case "past-hour":
+                date.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY) - 1);
+                break;
+            case "past-24-hours":
+                date.set(Calendar.DAY_OF_YEAR, now.get(Calendar.DAY_OF_YEAR) - 1);
+                break;
+            case "past-week":
+                date.set(Calendar.DAY_OF_YEAR, now.get(Calendar.DAY_OF_YEAR) - 7);
+                break;
+            case "past-month":
+                date.set(Calendar.MONTH, now.get(Calendar.MONTH) - 1);
+                break;
+            case "past-year":
+                date.set(Calendar.YEAR, now.get(Calendar.YEAR) - 1);
+                break;
+            default:
+                return dateLabel;
+        }
+        now.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY) + 1);
+        DateFormat dateFormat = DateFormatFactoryUtil.getSimpleDateFormat(
+                "yyyyMMddHHmmss");
+        return StringPool.OPEN_BRACKET + dateFormat.format(date.getTime())
+                + StringPool.SPACE + EsSearchApiService.ELASTIC_SEARCH_TO
+                + StringPool.SPACE + dateFormat.format(now.getTime())
+                + StringPool.CLOSE_BRACKET;
     }
 
     /** The counts. */

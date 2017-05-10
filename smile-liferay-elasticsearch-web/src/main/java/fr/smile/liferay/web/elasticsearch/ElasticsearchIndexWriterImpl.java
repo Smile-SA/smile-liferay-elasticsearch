@@ -2,12 +2,16 @@ package fr.smile.liferay.web.elasticsearch;
 
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
-import com.liferay.portal.kernel.search.*;
-import fr.smile.liferay.web.elasticsearch.api.EsIndexApiService;
+import com.liferay.portal.kernel.search.BaseIndexWriter;
+import com.liferay.portal.kernel.search.Document;
+import com.liferay.portal.kernel.search.DocumentComparator;
+import com.liferay.portal.kernel.search.SearchContext;
+import com.liferay.portal.kernel.search.SearchException;
+import fr.smile.liferay.elasticsearch.client.model.ElasticSearchJsonDocument;
+import fr.smile.liferay.elasticsearch.client.model.Index;
+import fr.smile.liferay.elasticsearch.client.service.IndexService;
 import fr.smile.liferay.web.elasticsearch.exception.ElasticSearchIndexException;
-import fr.smile.liferay.web.elasticsearch.model.document.ElasticSearchJsonDocument;
 import fr.smile.liferay.web.elasticsearch.model.document.ElasticSearchJsonDocumentBuilder;
-import fr.smile.liferay.web.elasticsearch.model.index.LiferayIndex;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -29,14 +33,19 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
 
     /** Liferay index. */
     @Autowired
-    private LiferayIndex index;
+    private Index index;
 
-    /** Liferay api service. */
+    /** Liferay index service. */
     @Autowired
-    private EsIndexApiService elasticsearchApiService;
+    private IndexService indexService;
 
     /** version. */
     public static final String VERSION = "version";
+
+    /**
+     * War type.
+     */
+    public static final String WAR = "/war";
 
     @Override
     public final void addDocument(final SearchContext searchContext, final Document document) throws SearchException {
@@ -62,7 +71,11 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
     @Override
     public final void deleteDocument(final SearchContext searchContext, final String uid) throws SearchException {
         LOGGER.debug("Delete document from elasticsearch indexices");
-        elasticsearchApiService.removeDocument(uid, index.getName());
+
+        if (!uid.endsWith(WAR)) {
+            indexService.removeDocument(uid, index.getName());
+        }
+
     }
 
     @Override
@@ -114,7 +127,7 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
         LOGGER.debug("Processing document for elasticsearch indexing");
         try {
             ElasticSearchJsonDocument elasticserachJSONDocument = processDocument(document);
-            elasticsearchApiService.writeDocument(elasticserachJSONDocument);
+            indexService.writeDocument(index, elasticserachJSONDocument);
         } catch (ElasticSearchIndexException e) {
             throw new SearchException(e);
         }

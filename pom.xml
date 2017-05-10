@@ -28,6 +28,7 @@
         <module>smile-liferay-elasticsearch-web</module>
         <module>elasticsearch-management</module>
         <module>smile-liferay-search-hook</module>
+        <module>elasticsearch-client</module>
     </modules>
 
     <developers>
@@ -73,8 +74,8 @@
                 <version>${compiler-plugin.version}</version>
 				<configuration>
 					<encoding>UTF-8</encoding>
-					<source>1.6</source>
-					<target>1.6</target>
+					<source>${java-version}</source>
+					<target>${java-version}</target>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -115,7 +116,6 @@
             <artifactId>elasticsearch</artifactId>
             <version>2.1.0</version>
         </dependency>
-
 	</dependencies>
 
     <repositories>
@@ -143,7 +143,6 @@
         <profile>
             <id>elastic-liferay</id>
             <properties>
-                <liferay.app.server>/home/lxc/elastic-liferay/opt/liferay-portal-6.2-ce-ga6</liferay.app.server>
                 <liferay.auto.deploy.dir>${liferay.app.server}/deploy</liferay.auto.deploy.dir>
                 <liferay.app.server.deploy.dir>${liferay.app.server}/tomcat/webapps</liferay.app.server.deploy.dir>
                 <liferay.app.server.lib.global.dir>${liferay.app.server}/tomcat/lib/ext</liferay.app.server.lib.global.dir>

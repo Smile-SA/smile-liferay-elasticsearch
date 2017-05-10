@@ -1,4 +1,4 @@
-package fr.smile.liferay.web.elasticsearch.model.document;
+package fr.smile.liferay.elasticsearch.client.model;
 
 /**
  * @author marem

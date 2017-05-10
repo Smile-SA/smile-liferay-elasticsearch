@@ -5,17 +5,130 @@
         "properties": {
           "title": {
             "type": "string",
+            "index": "analyzed"
+          },
+          "title_fr_FR": {
+            "type": "string",
             "index": "analyzed",
             "analyzer": "smile_french"
+          },
+          "title_fr_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "title_en_EN": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_english"
+          },
+          "title_es_ES": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_spanish"
+          },
+          "title_it_IT": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_italian"
+          },
+          "title_nl_NL": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
+          "title_nl_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
           },
           "title_sortable": {
             "type": "string",
             "index": "not_analyzed"
           },
+          "modified": {
+            "type": "long"
+          },
+          "modified_sortable": {
+            "type": "long"
+          },
           "content": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "content_fr_FR": {
             "type": "string",
             "index": "analyzed",
             "analyzer": "smile_french"
+          },
+          "content_fr_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "content_en_EN": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_english"
+          },
+          "content_es_ES": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_spanish"
+          },
+          "content_it_IT": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_italian"
+          },
+          "content_nl_NL": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
+          "content_nl_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
+          "description": {
+            "type": "string",
+            "index": "not_analyzed"
+          },
+          "description_fr_FR": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "description_fr_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_french"
+          },
+          "description_en_EN": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_english"
+          },
+          "description_es_ES": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_spanish"
+          },
+          "description_it_IT": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_italian"
+          },
+          "description_nl_NL": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
+          },
+          "description_nl_BE": {
+            "type": "string",
+            "index": "analyzed",
+            "analyzer": "smile_dutch"
           },
           "uid": {
             "index": "not_analyzed",

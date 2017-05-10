@@ -4,15 +4,27 @@
       "keyword_lowercase": {
         "tokenizer": "keyword",
         "filter":  "lowercase"
-      }
-    },
-    "analyzer": {
+      },
       "smile_french": {
         "tokenizer": "standard",
-        "filter":  ["standard", "lowercase","asciifolding","synonyms","french_stemmer"]
-      }
-    },
-    "analyzer": {
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","french_stemmer"]
+      },
+      "smile_english": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","english_stemmer"]
+      },
+      "smile_spanish": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","spanish_stemmer"]
+      },
+      "smile_italian": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","italian_stemmer"]
+      },
+      "smile_dutch": {
+        "tokenizer": "standard",
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","dutch_stemmer"]
+      },
       "asset_tag_name": {
         "tokenizer": "whitespace",
         "filter": [
@@ -24,12 +36,22 @@
       "french_stemmer":{
         "type": "stemmer",
         "name": "light_french"
-      }
-    },
-    "filter": {
-      "synonyms":{
-        "type": "synonym",
-        "synonyms_path": "synonym.txt"
+      },
+      "english_stemmer":{
+        "type": "stemmer",
+        "name": "light_english"
+      },
+      "spanish_stemmer":{
+        "type": "stemmer",
+        "name": "light_spanish"
+      },
+      "italian_stemmer":{
+        "type": "stemmer",
+        "name": "light_italian"
+      },
+      "dutch_stemmer":{
+        "type": "stemmer",
+        "name": "dutch"
       }
     }
   }
