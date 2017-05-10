@@ -2,12 +2,17 @@
 
 <web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
 
-    <listener>
-        <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
-    </listener>
+    <display-name>elasticsearch-management-portlet</display-name>
 
-    <context-param>
-        <param-name>contextConfigLocation</param-name>
-        <param-value>classpath:spring/elasticsearch-client.xml</param-value>
-    </context-param>
+    <servlet>
+        <servlet-name>view-servlet</servlet-name>
+        <servlet-class>org.springframework.web.servlet.ViewRendererServlet</servlet-class>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>view-servlet</servlet-name>
+        <url-pattern>/WEB-INF/servlet/view</url-pattern>
+    </servlet-mapping>
+
 </web-app>

@@ -25,6 +25,7 @@ import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Time;
 import fr.smile.liferay.elasticsearch.client.model.Index;
 import fr.smile.liferay.web.elasticsearch.facet.ElasticSearchQueryFacetCollector;
+import fr.smile.liferay.web.elasticsearch.util.Ranges;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
@@ -35,9 +36,9 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.range.Range;
-import org.elasticsearch.search.aggregations.bucket.range.RangeBuilder;
+import org.elasticsearch.search.aggregations.bucket.range.RangeAggregationBuilder;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
+import org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
@@ -56,8 +57,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * @author marem
- * @since 30/12/15.
+ * Standard Elastic Search Api Service.
  */
 @Service
 public class EsSearchApiService {
@@ -80,36 +80,6 @@ public class EsSearchApiService {
      */
     public EsSearchApiService() {
     }
-
-    /**
-     * To.
-     */
-    public static final String ELASTIC_SEARCH_TO = "TO";
-
-    /**
-     * Values.
-     */
-    public static final String ELASTIC_SEARCH_VALUES = "values";
-
-    /**
-     * Ranges.
-     */
-    public static final String ELASTIC_SEARCH_RANGES = "ranges";
-
-    /**
-     * Range.
-     */
-    public static final String ELASTIC_SEARCH_RANGE = "range";
-
-    /**
-     * Max terms.
-     */
-    public static final String ELASTIC_SEARCH_MAXTERMS = "maxTerms";
-
-    /**
-     * Modified.
-     */
-    public static final String ELASTIC_SEARCH_INNERFIELD_MDATE = "modified";
 
     /**
      * Gets the search hits.
@@ -202,9 +172,7 @@ public class EsSearchApiService {
             sortOrder = SortOrder.DESC;
         }
 
-        return SortBuilders.fieldSort(sort.getFieldName())
-                .ignoreUnmapped(true)
-                .order(sortOrder);
+        return SortBuilders.fieldSort(sort.getFieldName()).unmappedType("long").order(sortOrder);
     }
 
     /**
@@ -279,16 +247,16 @@ public class EsSearchApiService {
                 FacetConfiguration liferayFacetConfiguration = facet.getFacetConfiguration();
                 JSONObject liferayFacetDataJSONObject = liferayFacetConfiguration.getData();
                 if (facet instanceof MultiValueFacet) {
-                    TermsBuilder termsFacetBuilder = AggregationBuilders.terms(
+                    TermsAggregationBuilder termsFacetBuilder = AggregationBuilders.terms(
                         liferayFacetConfiguration.getFieldName()
                     );
                     termsFacetBuilder.field(liferayFacetConfiguration.getFieldName());
-                    if (liferayFacetDataJSONObject.has(ELASTIC_SEARCH_MAXTERMS)) {
-                        termsFacetBuilder.size(liferayFacetDataJSONObject.getInt(ELASTIC_SEARCH_MAXTERMS));
+                    if (liferayFacetDataJSONObject.has(Constant.ELASTIC_SEARCH_MAXTERMS)) {
+                        termsFacetBuilder.size(liferayFacetDataJSONObject.getInt(Constant.ELASTIC_SEARCH_MAXTERMS));
                     }
                     searchRequestBuilder.addAggregation(termsFacetBuilder);
                 } else if (facet instanceof RangeFacet) {
-                    RangeBuilder rangeFacetBuilder = AggregationBuilders.range(
+                    RangeAggregationBuilder rangeFacetBuilder = AggregationBuilders.range(
                         liferayFacetConfiguration.getFieldName()
                     );
 
@@ -297,12 +265,12 @@ public class EsSearchApiService {
                      *[{"range":"[20140603200000 TO 20140603220000]","label":"past-hour"},
                      * {"range":"[20140602210000 TO 20140603220000]","label":"past-24-hours"},...]
                      */
-                    JSONArray rangesJSONArray = liferayFacetDataJSONObject.getJSONArray(ELASTIC_SEARCH_RANGES);
-                    rangeFacetBuilder.field(ELASTIC_SEARCH_INNERFIELD_MDATE);
+                    JSONArray rangesJSONArray = liferayFacetDataJSONObject.getJSONArray(Constant.ELASTIC_SEARCH_RANGES);
+                    rangeFacetBuilder.field(Constant.ELASTIC_SEARCH_INNERFIELD_MDATE);
                     if (rangesJSONArray != null) {
                         for (int i = 0; i < rangesJSONArray.length(); i++) {
                             JSONObject rangeJSONObject = rangesJSONArray.getJSONObject(i);
-                            String[] fromTovalues = fetchFromToValuesInRage(rangeJSONObject);
+                            String[] fromTovalues = fetchFromToValuesInRange(rangeJSONObject);
                             if (fromTovalues != null) {
                                 rangeFacetBuilder.addRange(
                                         Double.parseDouble(fromTovalues[0].trim()),
@@ -400,7 +368,6 @@ public class EsSearchApiService {
         }
     }
 
-
     /**
      * Builds the range term.
      *
@@ -412,16 +379,10 @@ public class EsSearchApiService {
         try {
             long from = (long) ((double) entry.getFrom());
             long to = (long) ((double) entry.getTo());
-            return StringPool.OPEN_BRACKET + from
-                    + StringPool.SPACE + ELASTIC_SEARCH_TO
-                    + StringPool.SPACE + to
-                    + StringPool.CLOSE_BRACKET;
+            return Ranges.toRange(from, to);
         } catch (NumberFormatException e) {
             // If from or to can't be casted to long return string value
-            return StringPool.OPEN_BRACKET + entry.getFromAsString()
-                    + StringPool.SPACE + ELASTIC_SEARCH_TO
-                    + StringPool.SPACE + entry.getToAsString()
-                    + StringPool.CLOSE_BRACKET;
+            return Ranges.toRange(entry.getFromAsString(), entry.getToAsString());
         }
     }
 
@@ -433,7 +394,7 @@ public class EsSearchApiService {
      */
     private Set<String> fetchEntryClassnames(final Facet liferayFacet) {
         JSONObject dataJSONObject = liferayFacet.getFacetConfiguration().getData();
-        JSONArray valuesArray = dataJSONObject.getJSONArray(ELASTIC_SEARCH_VALUES);
+        JSONArray valuesArray = dataJSONObject.getJSONArray(Constant.ELASTIC_SEARCH_VALUES);
         Set<String> entryClassnames = new HashSet<>();
         if (valuesArray != null) {
             for (int z = 0; z < valuesArray.length(); z++) {
@@ -449,13 +410,12 @@ public class EsSearchApiService {
      * @param jsonObject the json object
      * @return the string[]
      */
-    private String[] fetchFromToValuesInRage(final JSONObject jsonObject) {
-        String fromToFormatRange = jsonObject.getString(ELASTIC_SEARCH_RANGE);
-        String[] fromToArray = null;
+    private String[] fetchFromToValuesInRange(final JSONObject jsonObject) {
+        String fromToFormatRange = jsonObject.getString(Constant.ELASTIC_SEARCH_RANGE);
         if (fromToFormatRange != null && fromToFormatRange.length() > 0) {
-            fromToArray = fromToFormatRange.substring(1, fromToFormatRange.length() - 1).split(ELASTIC_SEARCH_TO);
+            return fromToFormatRange.substring(1, fromToFormatRange.length() - 1).split(Constant.ELASTIC_SEARCH_TO);
         }
-        return fromToArray;
+        return null;
     }
 
     /**
@@ -468,7 +428,7 @@ public class EsSearchApiService {
 
         for (int i = 0; i < s.length(); ++i) {
             char c = s.charAt(i);
-            if (c == 47) {
+            if (c == '/') {
                 sb.append('\\');
             }
 

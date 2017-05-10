@@ -1,17 +1,11 @@
 package fr.smile.liferay.elasticsearch.client.model;
 
-import com.liferay.portal.kernel.log.Log;
-import com.liferay.portal.kernel.log.LogFactoryUtil;
-import fr.smile.liferay.elasticsearch.client.service.IndexService;
-import org.elasticsearch.ElasticsearchException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import javax.annotation.PostConstruct;
 
 /**
- * @author marem
- * @since 29/10/15.
+ * Represents the index used by Liferay.
+ *
+ * Mappings and settings are used to structure the index.
  */
 public class Index {
 

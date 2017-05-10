@@ -16,16 +16,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 /**
- * @author marem
- * @since 29/10/15.
+ * Service used to perform query to the index.
  */
 @Service
 public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
+
+    /** The Constant LOGGER. */
+    private static final Log LOGGER = LogFactoryUtil.getLog(ElasticsearchIndexWriterImpl.class);
 
     /** The document json builder. */
     @Autowired
@@ -49,14 +52,18 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
 
     @Override
     public final void addDocument(final SearchContext searchContext, final Document document) throws SearchException {
-        LOGGER.debug("Add document for elasticsearch indexing");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Add document for elasticsearch indexing");
+        }
         processIt(document);
     }
 
     @Override
     public final void addDocuments(final SearchContext searchContext, final Collection<Document> documents)
             throws SearchException {
-        LOGGER.debug("Add documents for elasticsearch indexing");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Add documents for elasticsearch indexing");
+        }
         /** This is to sort the Documents with version field from oldest to latest updates to
          retain the modifications */
         DocumentComparator documentComparator = new DocumentComparator(true, false);
@@ -70,7 +77,9 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
 
     @Override
     public final void deleteDocument(final SearchContext searchContext, final String uid) throws SearchException {
-        LOGGER.debug("Delete document from elasticsearch indexices");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Delete document from elasticsearch indexes");
+        }
 
         if (!uid.endsWith(WAR)) {
             indexService.removeDocument(uid, index.getName());
@@ -89,14 +98,18 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
     @Override
     public final void deletePortletDocuments(final SearchContext searchContext, final String portletId)
             throws SearchException {
-        LOGGER.error("Delete portlet documents from elasticsearch indexing");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.error("Delete portlet documents from elasticsearch indexing");
+        }
         //throw new SearchException("Portlet deployment documents are not supported");
     }
 
     @Override
     public final void updateDocument(final SearchContext searchContext, final Document document)
             throws SearchException {
-        LOGGER.debug("Update document from elasticsearch indexing");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Update document from elasticsearch indexing");
+        }
         processIt(document);
     }
 
@@ -110,6 +123,7 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
         documentComparator.addOrderBy(VERSION);
         Collections.sort((List<Document>) documents, documentComparator);
 
+        LOGGER.info("Update documents from elasticsearch indexing");
         for (Document document : documents) {
             updateDocument(searchContext, document);
         }
@@ -124,7 +138,9 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      *             the search exception
      */
     private void processIt(final Document document) throws SearchException {
-        LOGGER.debug("Processing document for elasticsearch indexing");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Processing document for elasticsearch indexing");
+        }
         try {
             ElasticSearchJsonDocument elasticserachJSONDocument = processDocument(document);
             indexService.writeDocument(index, elasticserachJSONDocument);
@@ -141,9 +157,12 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      */
     public final Collection<ElasticSearchJsonDocument> processDocuments(final Collection<Document> documents)
             throws ElasticSearchIndexException {
-        LOGGER.info("Processing multiple document objects for elasticsearch indexing");
 
-        Collection<ElasticSearchJsonDocument> esDocuments = new ArrayList<ElasticSearchJsonDocument>();
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Processing multiple document objects for elasticsearch indexing");
+        }
+
+        Collection<ElasticSearchJsonDocument> esDocuments = new ArrayList<>();
         // transform Document object into JSON object and send it to
         // elasticsearch server for indexing
         for (Document doc : documents) {
@@ -161,18 +180,14 @@ public class ElasticsearchIndexWriterImpl extends BaseIndexWriter {
      */
     public final ElasticSearchJsonDocument processDocument(final Document document)
             throws ElasticSearchIndexException {
-        Collection<Document> documents = new ArrayList<Document>();
-        documents.add(document);
-        LOGGER.info("Processing Document to update elasticsearch indexes");
+        Collection<Document> documents = Arrays.asList(document);
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Processing Document to update elasticsearch indexes");
+        }
 
         List<ElasticSearchJsonDocument> esDocuments = (List<ElasticSearchJsonDocument>) processDocuments(documents);
         return esDocuments.get(0);
     }
-
-
-
-
-    /** The Constant LOGGER. */
-    private static final Log LOGGER = LogFactoryUtil.getLog(ElasticsearchIndexWriterImpl.class);
 
 }

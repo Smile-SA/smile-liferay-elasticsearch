@@ -13,14 +13,14 @@ import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.SearchException;
 import com.liferay.portal.kernel.search.facet.Facet;
 import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 /**
- * @author marem
- * @since 15/11/16.
+ * Adapts the default Lucene Query built by Liferay to be used with ElasticSearch.
  */
 @Service
 public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSearcher {
@@ -31,16 +31,13 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
      * @return transformed query
      */
     public final BooleanQuery rebuildQuery(final SearchContext searchContext) {
-        BooleanQuery contextQuery = BooleanQueryFactoryUtil.create(
-                searchContext);
+        BooleanQuery contextQuery = BooleanQueryFactoryUtil.create(searchContext);
 
-        contextQuery.addRequiredTerm(
-                Field.COMPANY_ID, searchContext.getCompanyId());
+        contextQuery.addRequiredTerm(Field.COMPANY_ID, searchContext.getCompanyId());
 
         BooleanQuery fullQuery = null;
         try {
-            fullQuery = createFullQuery(
-                    contextQuery, searchContext);
+            fullQuery = createFullQuery(contextQuery, searchContext);
             QueryConfig queryConfig = searchContext.getQueryConfig();
 
             fullQuery.setQueryConfig(queryConfig);
@@ -56,8 +53,7 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
             throws SearchException {
 
         try {
-            BooleanQuery contextQuery = BooleanQueryFactoryUtil.create(
-                    searchContext);
+            BooleanQuery contextQuery = BooleanQueryFactoryUtil.create(searchContext);
 
             addSearchAssetCategoryIds(contextQuery, searchContext);
             addSearchAssetTagNames(contextQuery, searchContext);
@@ -67,8 +63,7 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
             addSearchLayout(contextQuery, searchContext);
             addSearchUserId(contextQuery, searchContext);
 
-            BooleanQuery fullQuery = createFullQuery(
-                    contextQuery, searchContext);
+            BooleanQuery fullQuery = createFullQuery(contextQuery, searchContext);
 
             fullQuery.setQueryConfig(searchContext.getQueryConfig());
 
@@ -81,40 +76,31 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
     }
 
     @Override
-    protected final BooleanQuery createFullQuery(
-            final BooleanQuery contextQuery, final SearchContext searchContext)
+    protected final BooleanQuery createFullQuery(final BooleanQuery contextQuery, final SearchContext searchContext)
             throws Exception {
 
-        BooleanQuery searchQuery = BooleanQueryFactoryUtil.create(
-                searchContext);
+        BooleanQuery searchQuery = BooleanQueryFactoryUtil.create(searchContext);
 
         String keywords = searchContext.getKeywords();
 
         if (Validator.isNotNull(keywords)) {
-            addSearchLocalizedTerm(
-                    searchQuery, searchContext, Field.ASSET_CATEGORY_TITLES, false);
+            addSearchLocalizedTerm(searchQuery, searchContext, Field.ASSET_CATEGORY_TITLES, false);
 
             searchQuery.addExactTerm(Field.ASSET_TAG_NAMES, keywords);
 
             BooleanQuery keyWordsQuery = BooleanQueryFactoryUtil.create(searchContext);
-            String[] listTerms = keywords.split(" ");
             for (String field : Field.KEYWORDS) {
                 BooleanQuery keyWordsFieldQuery = BooleanQueryFactoryUtil.create(searchContext);
-                for (String term : listTerms) {
-                    keyWordsFieldQuery.addRequiredTerm(field, term, true);
+                for (String term : keywords.split(StringPool.SPACE)) {
+                    keyWordsFieldQuery.addExactTerm(field, term);
                 }
                 keyWordsQuery.add(keyWordsFieldQuery, BooleanClauseOccur.SHOULD);
             }
-
             searchQuery.add(keyWordsQuery, BooleanClauseOccur.MUST);
 
-            int groupId = GetterUtil.getInteger(
-                    searchContext.getAttribute(Field.GROUP_ID));
-
+            int groupId = GetterUtil.getInteger(searchContext.getAttribute(Field.GROUP_ID));
             if (groupId == 0) {
-                searchQuery.addTerm(
-                        Field.STAGING_GROUP, "true", false,
-                        BooleanClauseOccur.MUST_NOT);
+                searchQuery.addTerm(Field.STAGING_GROUP, "true", false, BooleanClauseOccur.MUST_NOT);
             }
         }
 
@@ -132,16 +118,14 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
             }
 
             if (Validator.isNotNull(keywords)) {
-                addSearchExpandoKeywords(
-                        searchQuery, searchContext, keywords, entryClassName);
+                addSearchExpandoKeywords(searchQuery, searchContext, keywords, entryClassName);
             }
 
             indexer.postProcessSearchQuery(searchQuery, searchContext);
 
             for (IndexerPostProcessor indexerPostProcessor : indexer.getIndexerPostProcessors()) {
 
-                indexerPostProcessor.postProcessSearchQuery(
-                        searchQuery, searchContext);
+                indexerPostProcessor.postProcessSearchQuery(searchQuery, searchContext);
             }
         }
 
@@ -151,9 +135,7 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
             BooleanClause facetClause = facet.getFacetClause();
 
             if (facetClause != null) {
-                contextQuery.add(
-                        facetClause.getQuery(),
-                        facetClause.getBooleanClauseOccur());
+                contextQuery.add(facetClause.getQuery(), facetClause.getBooleanClauseOccur());
             }
         }
 
@@ -169,9 +151,7 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
 
         if (booleanClauses != null) {
             for (BooleanClause booleanClause : booleanClauses) {
-                fullQuery.add(
-                        booleanClause.getQuery(),
-                        booleanClause.getBooleanClauseOccur());
+                fullQuery.add(booleanClause.getQuery(), booleanClause.getBooleanClauseOccur());
             }
         }
 
@@ -190,8 +170,7 @@ public class FacetedSearcher extends com.liferay.portal.kernel.search.FacetedSea
 
             for (IndexerPostProcessor indexerPostProcessor : indexer.getIndexerPostProcessors()) {
 
-                indexerPostProcessor.postProcessFullQuery(
-                        fullQuery, searchContext);
+                indexerPostProcessor.postProcessFullQuery(fullQuery, searchContext);
             }
         }
 

@@ -7,7 +7,7 @@
       },
       "smile_french": {
         "tokenizer": "standard",
-        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding","french_stemmer"]
+        "filter":  ["standard", "word_delimiter", "lowercase","asciifolding", "french_stemmer"]
       },
       "smile_english": {
         "tokenizer": "standard",
@@ -27,9 +27,7 @@
       },
       "asset_tag_name": {
         "tokenizer": "whitespace",
-        "filter": [
-          "lowercase", "stop", "trim", "word_delimiter"
-        ]
+        "filter": ["lowercase", "stop", "trim", "word_delimiter"]
       }
     },
     "filter": {

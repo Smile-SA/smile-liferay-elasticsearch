@@ -4,12 +4,9 @@ import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import com.liferay.portal.kernel.util.Validator;
 import org.elasticsearch.ElasticsearchException;
-import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 /**
- * @author marem
- * @since 27/07/16.
+ * This object contains all the information needed to connect to the ElasticSearch index.
  */
 public class ConnexionSettings {
 

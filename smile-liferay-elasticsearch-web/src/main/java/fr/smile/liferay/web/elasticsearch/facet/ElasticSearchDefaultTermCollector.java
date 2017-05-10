@@ -3,10 +3,16 @@ package fr.smile.liferay.web.elasticsearch.facet;
 import com.liferay.portal.kernel.search.facet.collector.TermCollector;
 
 /**
- * @author marem
- * @since 30/10/15.
+ * Default Term Collector.
  */
 public class ElasticSearchDefaultTermCollector implements TermCollector {
+
+    /** The term. */
+    private String term;
+
+    /** The frequency. */
+    private int frequency;
+
     /**
      * Instantiates a new elasticsearch default term collector.
      *
@@ -20,18 +26,11 @@ public class ElasticSearchDefaultTermCollector implements TermCollector {
 
     @Override
     public final String getTerm() {
-        return this.term;
+        return term;
     }
 
     @Override
     public final int getFrequency() {
-        return this.frequency;
+        return frequency;
     }
-
-
-    /** The term. */
-    private String term;
-
-    /** The frequency. */
-    private int frequency;
 }
