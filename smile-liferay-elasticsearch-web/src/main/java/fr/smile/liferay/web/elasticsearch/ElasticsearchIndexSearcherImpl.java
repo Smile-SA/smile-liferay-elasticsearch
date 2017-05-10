@@ -1,12 +1,8 @@
 package fr.smile.liferay.web.elasticsearch;
 
 import com.liferay.portal.kernel.search.BaseIndexSearcher;
-import com.liferay.portal.kernel.search.BooleanQuery;
-import com.liferay.portal.kernel.search.BooleanQueryFactoryUtil;
-import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Hits;
 import com.liferay.portal.kernel.search.Query;
-import com.liferay.portal.kernel.search.QueryConfig;
 import com.liferay.portal.kernel.search.SearchContext;
 import com.liferay.portal.kernel.search.SearchException;
 import com.liferay.portal.kernel.search.Sort;
@@ -17,8 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
- * @author marem
- * @since 29/10/15.
+ * Service used to retrieve the results of a search query to the index.
  */
 @Service
 public class ElasticsearchIndexSearcherImpl extends BaseIndexSearcher {

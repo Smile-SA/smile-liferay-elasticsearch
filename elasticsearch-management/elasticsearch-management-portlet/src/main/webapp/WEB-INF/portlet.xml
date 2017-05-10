@@ -4,16 +4,17 @@
 	<portlet>
 		<portlet-name>elasticsearch-management</portlet-name>
 		<display-name>elasticsearch-management</display-name>
-		<portlet-class>fr.smile.liferay.elasticsearch.management.controller.IndexController</portlet-class>
+		<portlet-class>org.springframework.web.portlet.DispatcherPortlet</portlet-class>
 		<init-param>
-			<name>view-template</name>
-			<value>/view.jsp</value>
+			<name>contextConfigLocation</name>
+			<value>/WEB-INF/elasticsearch-management-portlet.xml</value>
 		</init-param>
 		<expiration-cache>0</expiration-cache>
 		<supports>
 			<mime-type>text/html</mime-type>
+			<portlet-mode>view</portlet-mode>
 		</supports>
-		<resource-bundle>content.Language</resource-bundle>
+		<resource-bundle>messages</resource-bundle>
 		<portlet-info>
 			<title>elasticsearch-management</title>
 			<short-title>elasticsearch-management</short-title>

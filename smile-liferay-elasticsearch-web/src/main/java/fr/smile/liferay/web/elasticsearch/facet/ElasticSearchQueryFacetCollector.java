@@ -3,17 +3,28 @@ package fr.smile.liferay.web.elasticsearch.facet;
 import com.liferay.portal.kernel.search.facet.collector.FacetCollector;
 import com.liferay.portal.kernel.search.facet.collector.TermCollector;
 import com.liferay.portal.kernel.util.DateFormatFactoryUtil;
-import com.liferay.portal.kernel.util.StringPool;
-import fr.smile.liferay.web.elasticsearch.api.EsSearchApiService;
+import fr.smile.liferay.web.elasticsearch.util.Ranges;
 
 import java.text.DateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * @author marem
- * @since 30/10/15.
+ * Query Facet Collector.
  */
 public class ElasticSearchQueryFacetCollector implements FacetCollector {
+
+    /** The counts. */
+    private Map<String, Integer> counts = new HashMap<>();
+
+    /** The _field name. */
+    private String fieldName;
+
+    /** The _term collectors. */
+    private List<TermCollector> termCollectors;
 
     /**
      * Instantiates a new elasticsearch query facet collector.
@@ -23,30 +34,25 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
      */
     public ElasticSearchQueryFacetCollector(final String fieldName, final Map<String, Integer> facetResults) {
         this.fieldName = fieldName;
-
-        for (Map.Entry<String, Integer> entry : facetResults.entrySet()) {
-            String term = entry.getKey();
-            Integer count = entry.getValue();
-            this.counts.put(term, count);
-        }
+        this.counts.putAll(facetResults);
     }
 
     @Override
     public final String getFieldName() {
-        return this.fieldName;
+        return fieldName;
     }
 
     @Override
     public final TermCollector getTermCollector(final String term) {
         int count = 0;
 
-        if (this.counts.get(term) != null) {
-            count = this.counts.get(term);
+        if (counts.containsKey(term)) {
+            count = counts.get(term);
         }
         else {
             String normalizeLabel = normalizeRangeLabel(term);
             if (!normalizeLabel.equals(term)) {
-                count = this.counts.get(normalizeLabel);
+                count = counts.get(normalizeLabel);
             }
         }
         return new ElasticSearchDefaultTermCollector(term, count);
@@ -54,21 +60,15 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
 
     @Override
     public final List<TermCollector> getTermCollectors() {
-        if (this.termCollectors != null) {
-            return this.termCollectors;
+        if (this.termCollectors == null) {
+            termCollectors = new ArrayList<>();
+
+            for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+                TermCollector termCollector = new ElasticSearchDefaultTermCollector(entry.getKey(), entry.getValue());
+                termCollectors.add(termCollector);
+            }
         }
-
-        List<TermCollector> termCollectors = new ArrayList<TermCollector>();
-
-        for (Map.Entry<String, Integer> entry : this.counts.entrySet()) {
-            Integer count = entry.getValue();
-            TermCollector termCollector = new ElasticSearchDefaultTermCollector(entry.getKey(),  count);
-            termCollectors.add(termCollector);
-        }
-
-        this.termCollectors = termCollectors;
-
-        return this.termCollectors;
+        return termCollectors;
     }
 
     private String normalizeRangeLabel(String dateLabel) {
@@ -100,20 +100,9 @@ public class ElasticSearchQueryFacetCollector implements FacetCollector {
                 return dateLabel;
         }
         now.set(Calendar.HOUR_OF_DAY, now.get(Calendar.HOUR_OF_DAY) + 1);
-        DateFormat dateFormat = DateFormatFactoryUtil.getSimpleDateFormat(
-                "yyyyMMddHHmmss");
-        return StringPool.OPEN_BRACKET + dateFormat.format(date.getTime())
-                + StringPool.SPACE + EsSearchApiService.ELASTIC_SEARCH_TO
-                + StringPool.SPACE + dateFormat.format(now.getTime())
-                + StringPool.CLOSE_BRACKET;
+        DateFormat dateFormat = DateFormatFactoryUtil.getSimpleDateFormat("yyyyMMddHHmmss");
+
+        return Ranges.toRange(dateFormat.format(date.getTime()), dateFormat.format(now.getTime()));
     }
 
-    /** The counts. */
-    private Map<String, Integer> counts = new HashMap<String, Integer>();
-
-    /** The _field name. */
-    private String fieldName;
-
-    /** The _term collectors. */
-    private List<TermCollector> termCollectors;
 }

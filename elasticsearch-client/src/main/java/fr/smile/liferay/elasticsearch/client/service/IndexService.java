@@ -18,7 +18,7 @@ import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
-import org.elasticsearch.indices.IndexAlreadyExistsException;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.json.JSONArray;
@@ -31,8 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author marem
- * @since 27/07/16.
+ * This service gives access to the index through useful methods.
  */
 @Service
 public class IndexService {
@@ -70,8 +69,7 @@ public class IndexService {
     }
 
     /**
-     * Creates the liferay index in Elasticsearch server with default dynamic
-     * mapping template.
+     * Creates the liferay index in Elasticsearch server with default dynamic mapping template.
      * @param index index
      */
     public final void createIndex(final Index index) {
@@ -99,8 +97,6 @@ public class IndexService {
 
             LOGGER.info("Index created with dynamic template mapping provided, Result:"
                     + createIndexResponse.isAcknowledged());
-        } catch (IndexAlreadyExistsException iaeEx) {
-            LOGGER.warn("Index already exists, no need to create again....");
         } catch (Exception e) {
             LOGGER.error("Failed to load file for elasticsearch mapping settings", e);
         }
@@ -165,37 +161,37 @@ public class IndexService {
     public final void removeDocument(final String uid, final String index) {
 
         try {
-            /** Don't handle plugin deployment documents, skip them */
+            /* Don't handle plugin deployment documents, skip them */
 
-                QueryStringQueryBuilder query = QueryBuilders.queryStringQuery(
-                        ELASTIC_SEARCH_QUERY_UID + uid
-                );
+            QueryStringQueryBuilder query = QueryBuilders.queryStringQuery(
+                    ELASTIC_SEARCH_QUERY_UID + uid
+            );
 
-                SearchResponse scrollResp = client
-                        .prepareSearch(index)
-                        .setQuery(query)
-                        .execute().actionGet();
+            SearchResponse scrollResp = client
+                    .prepareSearch(index)
+                    .setQuery(query)
+                    .execute().actionGet();
 
-                SearchHits hits = scrollResp.getHits();
+            SearchHits hits = scrollResp.getHits();
 
-                final int entriesToDelete = hits.getHits().length;
+            final int entriesToDelete = hits.getHits().length;
 
-                LOGGER.debug("Prepare to delete: " + entriesToDelete + " entries from index");
+            LOGGER.debug("Prepare to delete: " + entriesToDelete + " entries from index");
 
-                for (SearchHit hit : hits) {
-                    LOGGER.debug("Deleting entry with id : " + hit.getId());
-                    DeleteResponse deleteResponse = client.prepareDelete(
-                            index,
-                            hit.getType(),
-                            hit.getId())
-                            .get();
+            for (SearchHit hit : hits) {
+                LOGGER.debug("Deleting entry with id : " + hit.getId());
+                DeleteResponse deleteResponse = client.prepareDelete(
+                        index,
+                        hit.getType(),
+                        hit.getId())
+                        .get();
 
-                    if (deleteResponse.isFound()) {
-                        LOGGER.debug("Document deleted successfully with id : " + hit.getId());
-                    } else {
-                        LOGGER.debug("Document with id : " + hit.getId() + "is not found");
-                    }
+                if (deleteResponse.status() == RestStatus.FOUND) {
+                    LOGGER.debug("Document deleted successfully with id : " + hit.getId());
+                } else {
+                    LOGGER.debug("Document with id : " + hit.getId() + "is not found");
                 }
+            }
         } catch (NoNodeAvailableException noNodeEx) {
             LOGGER.error("No node available:" + noNodeEx.getDetailedMessage());
         }
