@@ -1,33 +1,44 @@
 package fr.smile.liferay.elasticsearch.client.service;
 
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.util.StringPool;
 import fr.smile.liferay.elasticsearch.client.model.ElasticSearchJsonDocument;
 import fr.smile.liferay.elasticsearch.client.model.Index;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
 import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
+import org.elasticsearch.action.admin.indices.get.GetIndexResponse;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsResponse;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequestBuilder;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.transport.NoNodeAvailableException;
+import org.elasticsearch.cluster.metadata.MappingMetaData;
+import org.elasticsearch.common.collect.ImmutableOpenMap;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -103,6 +114,95 @@ public class IndexService {
     }
 
     /**
+     * Update mappings for a specific Index.
+     * @param indexName the index name
+     * @param indexMappings the mappings
+     * @return <true> if update is successfully done, <false> otherwise
+     */
+    public final boolean updateIndexMappings(final String indexName, String indexMappings) {
+        try {
+            if (checkIfIndexExists(indexName) && !StringUtils.isEmpty(indexMappings)) {
+                PutMappingRequestBuilder mappingBuilder = client.admin().indices().preparePutMapping(indexName);
+                JSONObject jsonMappings = new JSONObject(indexMappings);
+                JSONArray jsonMappingsJSONArray = jsonMappings.getJSONArray("mappings");
+                for (int i = 0; i < jsonMappingsJSONArray.length(); i++) {
+                    JSONObject obj = jsonMappingsJSONArray.getJSONObject(i);
+                    String type = obj.names().getString(0);
+                    String mapping = obj.getJSONObject(type).toString();
+                    mappingBuilder.setType(type).setSource(mapping).get();
+                }
+                return true;
+            }
+        } catch (ElasticsearchException | JSONException e) {
+            LOGGER.error("Error while updating mappings for index " + indexName + ":", e);
+        }
+        return false;
+    }
+
+    /**
+     * Update mappings for a specific Index.
+     * @param indexName the index name
+     * @param indexSettings the settings
+     * @return <true> if update is successfully done, <false> otherwise
+     */
+    public final boolean updateIndexSettings(final String indexName, String indexSettings) {
+        try {
+            if (checkIfIndexExists(indexName) && !StringUtils.isEmpty(indexSettings)) {
+                IndicesAdminClient indices = client.admin().indices();
+
+                indices.prepareClose(indexName).get();
+                indices.prepareUpdateSettings(indexName).setSettings(indexSettings).get();
+                indices.prepareOpen(indexName).get();
+                indices.prepareRefresh(indexName).get();
+                return true;
+            }
+        } catch (ElasticsearchException e) {
+            LOGGER.error("Error while updating settings for index " + indexName + ":", e);
+        }
+        return false;
+    }
+
+    /**
+     * Get the index mappings.
+     * @param indexName index name
+     * @return the mappings
+     */
+    public ImmutableOpenMap<String, MappingMetaData> getMappings(String indexName) {
+        if (indexName != null && !indexName.isEmpty()) {
+            GetMappingsResponse response = client.admin().indices().prepareGetMappings(indexName).get();
+            Iterator<ObjectObjectCursor<String, ImmutableOpenMap<String, MappingMetaData>>> it = response.getMappings().iterator();
+
+            while (it.hasNext()) {
+                ObjectObjectCursor<String, ImmutableOpenMap<String, MappingMetaData>> cursor = it.next();
+                if (indexName.equalsIgnoreCase(cursor.key)) {
+                    return cursor.value;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the index settings
+     * @param indexName index name
+     * @return the settings
+     */
+    public Settings getSettings(String indexName) {
+        if (indexName != null && !indexName.isEmpty()) {
+            GetSettingsResponse response = client.admin().indices().prepareGetSettings(indexName).get();
+            Iterator<ObjectObjectCursor<String, Settings>> it = response.getIndexToSettings().iterator();
+
+            while (it.hasNext()) {
+                ObjectObjectCursor<String, Settings> cursor = it.next();
+                if (indexName.equalsIgnoreCase(cursor.key)) {
+                    return cursor.value;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * List indices.
      * @return indices
      */
@@ -110,19 +210,57 @@ public class IndexService {
         List<Index> indices = new ArrayList<>();
 
         IndicesAdminClient indicesAdminClient = client.admin().indices();
-        String[] esIndices = indicesAdminClient.getIndex(new GetIndexRequest())
-                .actionGet()
-                .getIndices();
+        GetIndexResponse indexResponse = indicesAdminClient.getIndex(new GetIndexRequest()).actionGet();
+        String[] esIndices = indexResponse.getIndices();
 
-        for (String esIndex : esIndices) {
-            Index index = new Index();
-            SearchResponse response = client.prepareSearch(esIndex).setSize(0).get();
-            SearchHits hits = response.getHits();
-            index.setTotalHits(hits.getTotalHits());
-            indices.add(index);
+        if (esIndices != null && esIndices.length > 0) {
+            for (String esIndex : esIndices) {
+                Index index = new Index();
+                SearchResponse response = client.prepareSearch(esIndex).setSize(0).get();
+                SearchHits hits = response.getHits();
+                index.setName(esIndex);
+                index.setTotalHits(hits.getTotalHits());
+                indices.add(index);
+            }
         }
 
         return indices;
+    }
+
+    /**
+     * Get index by name.
+     * @param indexName index name
+     * @return an instance of {@link Index}
+     */
+    public final Index getIndex(String indexName) {
+        IndicesAdminClient indicesAdminClient = client.admin().indices();
+        GetIndexResponse indexResponse = indicesAdminClient.getIndex(new GetIndexRequest()).actionGet();
+        String[] esIndices = indexResponse.getIndices();
+
+        if (esIndices != null && esIndices.length > 0) {
+            for (String esIndex : esIndices) {
+                if (esIndex.equalsIgnoreCase(indexName)) {
+                    Index index = new Index();
+                    SearchResponse response = client.prepareSearch(esIndex).setSize(0).get();
+                    SearchHits hits = response.getHits();
+                    index.setName(esIndex);
+                    index.setTotalHits(hits.getTotalHits());
+                    return index;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Count number of documents in index.
+     * @param indexName index name
+     * @return the number of documents in index
+     */
+    public final long countDocument(String indexName) {
+        SearchResponse response = client.prepareSearch(indexName).setSize(0).get();
+        SearchHits hits = response.getHits();
+        return hits.getTotalHits();
     }
 
     /**

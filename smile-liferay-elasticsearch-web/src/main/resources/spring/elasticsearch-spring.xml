@@ -9,7 +9,7 @@
                             http://www.springframework.org/schema/util/spring-util-4.0.xsd">
 
     <!-- Auto scan the components -->
-    <import resource="elasticsearch-client.xml"/>
+    <import resource="classpath*:spring/elasticsearch-client.xml"/>
 
     <!-- Configurator -->
     <bean id="searchEngineConfigurator.elasticsearch" class="com.liferay.portal.kernel.search.PluginSearchEngineConfigurator">

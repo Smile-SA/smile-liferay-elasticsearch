@@ -18,7 +18,9 @@ This module provides the main and useful objects for interfacing Liferay and Ela
 
 **Smile-liferay-elasticsearch-web** serves as a link between Liferay and ElasticSearch and is the main module you have to care about.
 
-1) Edit the following properties in your **portal-ext.properties**.
+1) Ensure the **spring/elasticsearch-client.xml** is accessible through the classpath.
+
+2) Edit the following properties in your **portal-ext.properties**.
 
 ```
 elasticsearch.clusterName=#ELASTICSEARCH_CLUSTERNAME#
@@ -42,9 +44,9 @@ In this sample, `elasticsearch.settings.path` and `elasticsearch.mappings.path` 
 In this case, the **smile-liferay-elasticsearch-web** module loads the default files stored in its resource folder.
 
 
-2) Deploy **smile-liferay-elasticsearch-web** in Liferay.
+3) Deploy **smile-liferay-elasticsearch-web** in Liferay.
 
-3) Reindex all search indexes from the control panel.
+4) Reindex all search indexes from the control panel.
 
 ### Liferay Search Hook
 

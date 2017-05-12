@@ -9,7 +9,13 @@
 		<control-panel-entry-weight>100</control-panel-entry-weight>
 		<instanceable>false</instanceable>
 		<header-portlet-css>/css/main.css</header-portlet-css>
-		<footer-portlet-javascript>/js/main.js</footer-portlet-javascript>
+		<header-portlet-css>/css/vendor/prism.css</header-portlet-css>
+		<header-portlet-javascript>/js/vendor/prism.js</header-portlet-javascript>
+		<header-portlet-javascript>/js/reactor.js</header-portlet-javascript>
+		<footer-portlet-javascript>/js/init.js</footer-portlet-javascript>
+		<footer-portlet-javascript>/js/reindex.js</footer-portlet-javascript>
+		<footer-portlet-javascript>/js/mappings.js</footer-portlet-javascript>
+		<footer-portlet-javascript>/js/settings.js</footer-portlet-javascript>
 	</portlet>
 	<role-mapper>
 		<role-name>administrator</role-name>
