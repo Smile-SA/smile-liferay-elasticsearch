@@ -55,6 +55,14 @@
             "index": true,
             "type": "float"
           },
+          "createDate": {
+            "index": true,
+            "type": "date"
+          },
+          "createDate_sortable": {
+            "index": true,
+            "type": "date"
+          },
           "publishDate": {
             "index": true,
             "type": "date"

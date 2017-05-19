@@ -59,20 +59,21 @@
                 <role>contributor</role>
             </roles>
         </developer>
+        <developer>
+            <id>edcat</id>
+            <name>Edouard CATTEZ</name>
+            <email>edcat@smile.fr</email>
+            <organization>Smile</organization>
+            <organizationUrl>http://www.smile.fr</organizationUrl>
+        </developer>
+        <developer>
+            <id>edcat</id>
+            <name>Edouard CATTEZ</name>
+            <email>edcat@smile.fr</email>
+            <organization>Smile</organization>
+            <organizationUrl>http://www.smile.fr</organizationUrl>
+        </developer>
     </developers>
-
-    <distributionManagement>
-        <!-- use the following if you're not using a snapshot version. -->
-        <repository>
-            <id>smile.releases</id>
-            <url>http://pic-java.vitry.intranet/nexus/content/repositories/InternalSmileReleases/</url>
-        </repository>
-        <!-- use the following if you ARE using a snapshot version. -->
-        <snapshotRepository>
-            <id>smile.snapshots</id>
-            <url>http://pic-java.vitry.intranet/nexus/content/repositories/InternalSmileSnapshots/</url>
-        </snapshotRepository>
-    </distributionManagement>
 
 	<build>
 		<plugins>
@@ -180,27 +181,6 @@
             <scope>provided</scope>
         </dependency>
 	</dependencies>
-
-    <repositories>
-        <repository>
-            <id>nexus.internal.third-party</id>
-            <url>http://pic-java.vitry.intranet/nexus/content/repositories/nonCentralArtifacts/</url>
-        </repository>
-        <repository>
-            <id>nexus.smile-liferay</id>
-            <url>http://pic-java.vitry.intranet/nexus/content/repositories/LiferaySmile/</url>
-        </repository>
-        <repository>
-            <id>Smile Snapshots</id>
-            <name>Repo Smile snapshots nexus</name>
-            <url>http://pic-java.vitry.intranet/nexus/content/repositories/InternalSmileSnapshots/</url>
-        </repository>
-        <repository>
-            <id>Smile Releases</id>
-            <name>Repo Smile releases nexus</name>
-            <url>http://pic-java.vitry.intranet/nexus/content/repositories/InternalSmileReleases/</url>
-        </repository>
-    </repositories>
 
     <profiles>
         <profile>
